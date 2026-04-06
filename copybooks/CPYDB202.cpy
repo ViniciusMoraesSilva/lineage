@@ -1,0 +1,23 @@
+       01  REG-DB202.
+           05 P2-CHAVE              PIC X(10).
+           05 P2-ORIGEM             PIC X(01).
+           05 P2-CATEGORIA-FINAL    PIC X(04).
+           05 P2-SEGMENTO           PIC X(03).
+           05 P2-PRIORIDADE         PIC X(01).
+           05 P2-DECISAO            PIC X(12).
+           05 P2-CANAL-DESTINO      PIC X(02).
+           05 P2-FLAG-CROSS         PIC X(01).
+           05 P2-FLAG-BLOQUEIO      PIC X(01).
+           05 P2-SCORE              PIC 9(05).
+           05 P2-LIMITE-CRED        PIC 9(09)V99.
+           05 P2-VALOR-AJUSTADO     PIC 9(11)V99.
+           05 P2-PERC-LIMITE        PIC 9(03).
+           05 P2-STATUS             PIC X(01).
+           05 P2-TIPO-SAIDA         PIC X(02).
+           05 P2-OCORRENCIA         PIC X(03).
+           05 P2-MSG-FINAL          PIC X(50).
+           05 P2-NOME               PIC X(30).
+           05 P2-CODIGO-DB2         PIC X(05).
+           05 P2-DATA-REF           PIC 9(08).
+           05 P2-COD-PROCESSO       PIC X(10).
+           05 P2-FILLER             PIC X(184).

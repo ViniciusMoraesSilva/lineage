@@ -1,0 +1,4 @@
+step_input_id,step_id,ddname,entity_id,usage,disposition
+SI001,S001,ENTRADA,E001,read,SHR
+SI002,S002,INPUTA,E002,read,OLD_DELETE
+SI003,S002,INPUTB,E003,read,SHR

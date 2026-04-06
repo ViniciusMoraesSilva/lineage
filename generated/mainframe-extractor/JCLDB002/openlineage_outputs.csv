@@ -1,0 +1,3 @@
+run_id,dataset_namespace,dataset_name
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002

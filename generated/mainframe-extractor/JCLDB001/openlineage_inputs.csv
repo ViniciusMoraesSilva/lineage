@@ -1,0 +1,7 @@
+run_id,dataset_namespace,dataset_name
+RUN-JCLDB001-STEP010,mainframe://dataset,APP.INPUT1.ORIGINAL
+RUN-JCLDB001-STEP020,mainframe://dataset,APP.INPUT2.ORIGINAL
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPIN001
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPIN002
+RUN-JCLDB001-STEP030,mainframe://db2,APPDB.CLIENTE_MOVTO
+RUN-JCLDB001-STEP040,mainframe://dataset,&&TMPOUT03

@@ -1,0 +1,8 @@
+artifact_id,artifact_type,name,path,role,notes
+A001,JCL,JCLDB002,JCL/JCLDB002.jcl,job_control,Defines two COBOL steps and datasets for the post-processing flow
+A002,PROGRAM,CBLDB002A,programas/CBLDB002A.cbl,main_program,Reads JCLDB001 output and generates the intermediate layout
+A003,PROGRAM,CBLDB002B,programas/CBLDB002B.cbl,main_program,Reads intermediate output plus complementary input and writes final dataset
+A004,COPYBOOK,CPYOUT01,copybooks/CPYOUT01.cpy,input_schema,Schema for APP.ARQ.SAIDA.CBLDB001
+A005,COPYBOOK,CPYDB201,copybooks/CPYDB201.cpy,intermediate_schema,Schema for &&TMPDB201
+A006,COPYBOOK,CPYIN003,copybooks/CPYIN003.cpy,input_schema,Schema for APP.INPUT3.COMPLEMENTO
+A007,COPYBOOK,CPYDB202,copybooks/CPYDB202.cpy,output_schema,Schema for APP.ARQ.SAIDA.CBLDB002

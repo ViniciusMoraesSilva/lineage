@@ -1,0 +1,5 @@
+entity_id,entity_name,entity_type,system,record_format,lrecl,source_artifact_id,notes
+E001,APP.ARQ.SAIDA.CBLDB001,dataset,mainframe,FB,300,A001,Input dataset produced by JCLDB001 and consumed in STEP010
+E002,&&TMPDB201,temp_dataset,mainframe,FB,320,A001,Intermediate dataset written by CBLDB002A in STEP010
+E003,APP.INPUT3.COMPLEMENTO,dataset,mainframe,FB,80,A001,Complementary input dataset consumed in STEP020
+E004,APP.ARQ.SAIDA.CBLDB002,dataset,mainframe,FB,360,A001,Final cataloged output dataset written in STEP020

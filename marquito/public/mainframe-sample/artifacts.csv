@@ -1,0 +1,7 @@
+artifact_id,artifact_type,name,path,role,notes
+A001,JCL,JCLDB001,JCL/JCLDB001.jcl,job_control,Defines four steps and physical datasets
+A002,PROGRAM,CBLDB001,programas/CBLDB001.cbl,main_program,Main COBOL DB2 batch program executed in STEP030
+A003,COPYBOOK,CPYIN001,copybooks/CPYIN001.cpy,input_schema,Schema for INPUT1
+A004,COPYBOOK,CPYIN002,copybooks/CPYIN002.cpy,input_schema,Schema for INPUT2
+A005,COPYBOOK,CPYOUT01,copybooks/CPYOUT01.cpy,output_schema,Schema for SAIDA
+A006,DCLGEN,DCLTB001,dclgen/DCLTB001.dcl,db2_schema,Host variables and DB2 table APPDB.CLIENTE_MOVTO

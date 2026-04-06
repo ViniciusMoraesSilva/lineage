@@ -1,0 +1,3 @@
+step_id,job_id,step_name,sequence,program_name,step_type,jcl_program,plan_name,input_ddnames,output_ddnames
+S001,J001,STEP010,10,CBLDB002A,cobol,CBLDB002A,,ENTRADA,SAIDA1
+S002,J001,STEP020,20,CBLDB002B,cobol,CBLDB002B,,"INPUTA,INPUTB",SAIDAF

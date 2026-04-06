@@ -1,0 +1,19 @@
+       01  REG-DB201.
+           05 P1-CHAVE              PIC X(10).
+           05 P1-ORIGEM             PIC X(01).
+           05 P1-NOME               PIC X(30).
+           05 P1-STATUS             PIC X(01).
+           05 P1-CATEGORIA          PIC X(03).
+           05 P1-CANAL-GRUPO        PIC X(08).
+           05 P1-FAIXA-TOTAL        PIC X(02).
+           05 P1-ALERTA             PIC X(01).
+           05 P1-SCORE              PIC 9(05).
+           05 P1-TOTAL-GERAL        PIC 9(11)V99.
+           05 P1-VALOR-CALC         PIC 9(11)V99.
+           05 P1-OCORRENCIA         PIC X(03).
+           05 P1-TIPO-SAIDA         PIC X(02).
+           05 P1-CODIGO-DB2         PIC X(05).
+           05 P1-DATA-CAD           PIC X(10).
+           05 P1-MSG-ANALISE        PIC X(40).
+           05 P1-COD-PROCESSO       PIC X(10).
+           05 P1-FILLER             PIC X(163).

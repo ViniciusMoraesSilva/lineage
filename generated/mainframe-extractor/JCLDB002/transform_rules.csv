@@ -1,0 +1,39 @@
+rule_id,step_id,rule_type,rule_subtype,target_entity_id,target_column_name,expression,description
+R001,S001,move,pass_through,E002,P1-CHAVE,MOVE OUT-CHAVE TO P1-CHAVE,Key copied from JCLDB001 output
+R002,S001,move,pass_through,E002,P1-ORIGEM,MOVE OUT-ORIGEM TO P1-ORIGEM,Origin copied to intermediate layout
+R003,S001,move,pass_through,E002,P1-NOME,MOVE OUT-NOME TO P1-NOME,Name copied to intermediate layout
+R004,S001,move,pass_through,E002,P1-STATUS,MOVE OUT-STATUS TO P1-STATUS,Status copied to intermediate layout
+R005,S001,move,pass_through,E002,P1-TOTAL-GERAL,MOVE OUT-TOTAL-GERAL TO P1-TOTAL-GERAL,Total copied to intermediate layout
+R006,S001,move,pass_through,E002,P1-VALOR-CALC,MOVE OUT-VALOR-CALC TO P1-VALOR-CALC,Calculated value copied to intermediate layout
+R007,S001,move,pass_through,E002,P1-OCORRENCIA,MOVE OUT-OCORRENCIA TO P1-OCORRENCIA,Occurrence copied to intermediate layout
+R008,S001,move,pass_through,E002,P1-TIPO-SAIDA,MOVE OUT-TIPO-SAIDA TO P1-TIPO-SAIDA,Output type copied to intermediate layout
+R009,S001,move,pass_through,E002,P1-CODIGO-DB2,MOVE OUT-CODIGO-DB2 TO P1-CODIGO-DB2,DB2 code copied to intermediate layout
+R010,S001,move,pass_through,E002,P1-DATA-CAD,MOVE OUT-DATA-CAD TO P1-DATA-CAD,Registration date copied to intermediate layout
+R011,S001,constant,constant_assignment,E002,P1-COD-PROCESSO,MOVE 'P1-JCLDB2A' TO P1-COD-PROCESSO,Constant process tag for STEP010
+R012,S001,conditional,conditional_assignment,E002,P1-CATEGORIA,"IF OUT-STATUS = 'A' AND OUT-TOTAL-GERAL > 5000000 THEN 'VIP' ELSE IF OUT-STATUS = 'A' THEN 'ATV' ELSE 'BLQ'",Category derived from status and total
+R013,S001,conditional,conditional_assignment,E002,P1-CANAL-GRUPO,"IF OUT-CANAL-SAIDA IN ('WE','AP') OR OUT-ORIGEM = '2' THEN 'DIGITAL' ELSE 'AGENCIA'",Channel group derived from channel and origin
+R014,S001,conditional,conditional_assignment,E002,P1-FAIXA-TOTAL,"IF OUT-TOTAL-GERAL > 7000000 THEN 'A1' ELSE IF OUT-TOTAL-GERAL > 2000000 THEN 'B1' ELSE 'C1'",Range band derived from total amount
+R015,S001,conditional,conditional_assignment,E002,P1-ALERTA,"IF OUT-OCORRENCIA = '000' AND OUT-STATUS = 'A' THEN 'N' ELSE 'S'",Alert flag derived from occurrence and status
+R016,S001,compute,arithmetic_compute,E002,P1-SCORE,(OUT-VALOR-CALC / 100) + OUT-QTDE,Score calculated from value and quantity
+R017,S001,conditional,conditional_assignment,E002,P1-MSG-ANALISE,"IF P1-ALERTA = 'S' THEN 'REGRA COM ALERTA...' ELSE IF P1-CATEGORIA = 'VIP' THEN 'CLIENTE PRIORITARIO...' ELSE 'CLIENTE PADRAO...'",Analysis message derived from alert and category
+R018,S002,move,pass_through,E004,P2-CHAVE,MOVE P1-CHAVE TO P2-CHAVE,Key copied to final layout
+R019,S002,move,pass_through,E004,P2-ORIGEM,MOVE P1-ORIGEM TO P2-ORIGEM,Origin copied to final layout
+R020,S002,move,pass_through,E004,P2-NOME,MOVE P1-NOME TO P2-NOME,Name copied to final layout
+R021,S002,move,pass_through,E004,P2-STATUS,MOVE P1-STATUS TO P2-STATUS,Status copied to final layout
+R022,S002,move,pass_through,E004,P2-TIPO-SAIDA,MOVE P1-TIPO-SAIDA TO P2-TIPO-SAIDA,Output type copied to final layout
+R023,S002,move,pass_through,E004,P2-OCORRENCIA,MOVE P1-OCORRENCIA TO P2-OCORRENCIA,Occurrence copied to final layout
+R024,S002,move,pass_through,E004,P2-CODIGO-DB2,MOVE P1-CODIGO-DB2 TO P2-CODIGO-DB2,DB2 code copied to final layout
+R025,S002,move,pass_through,E004,P2-SCORE,MOVE P1-SCORE TO P2-SCORE,Score copied to final layout
+R026,S002,move,pass_through,E004,P2-COD-PROCESSO,MOVE P1-COD-PROCESSO TO P2-COD-PROCESSO,Process code propagated to final layout
+R027,S002,conditional,conditional_assignment,E004,P2-SEGMENTO,"IF IN3-CHAVE = P1-CHAVE THEN IN3-COD-SEGMENTO ELSE '000'",Segment derived from complementary match
+R028,S002,conditional,conditional_assignment,E004,P2-FLAG-BLOQUEIO,"IF IN3-CHAVE = P1-CHAVE THEN IN3-FLAG-BLOQUEIO ELSE 'N'",Block flag derived from complementary match
+R029,S002,conditional,conditional_assignment,E004,P2-LIMITE-CRED,"IF IN3-CHAVE = P1-CHAVE THEN IN3-LIMITE-CRED ELSE ZERO",Credit limit derived from complementary match
+R030,S002,compute,arithmetic_compute,E004,P2-VALOR-AJUSTADO,P1-VALOR-CALC * IN3-FATOR-AJUSTE,Adjusted value calculated from intermediate value and complementary factor
+R031,S002,compute,arithmetic_compute,E004,P2-PERC-LIMITE,(P1-TOTAL-GERAL / IN3-LIMITE-CRED) * 100,Percentage of limit calculated from total and complementary limit
+R032,S002,conditional,conditional_assignment,E004,P2-CANAL-DESTINO,"IF P1-CANAL-GRUPO = 'DIGITAL' THEN 'WB' ELSE IF MATCH THEN IN3-CANAL-REF ELSE 'AG'",Destination channel derived from channel group and complementary input
+R033,S002,conditional,conditional_assignment,E004,P2-FLAG-CROSS,"IF P1-TOTAL-GERAL > IN3-LIMITE-CRED THEN 'S' ELSE 'N'",Cross flag derived from total and credit limit
+R034,S002,conditional,conditional_assignment,E004,P2-PRIORIDADE,"IF IN3-TIPO-CLIENTE = 'P' AND P1-ALERTA = 'N' AND IN3-FLAG-BLOQUEIO <> 'S' THEN 'A' ELSE IF IN3-FLAG-BLOQUEIO = 'S' THEN 'C' ELSE IF MATCH THEN 'B' ELSE 'D'",Priority derived from complementary profile and alert flag
+R035,S002,conditional,conditional_assignment,E004,P2-DECISAO,"IF IN3-TIPO-CLIENTE = 'P' AND P1-ALERTA = 'N' AND IN3-FLAG-BLOQUEIO <> 'S' THEN 'APROVAR' ELSE IF IN3-FLAG-BLOQUEIO = 'S' THEN 'BLOQUEAR' ELSE IF MATCH THEN 'ANALISAR' ELSE 'MANUAL'",Decision derived from complementary profile and alert flag
+R036,S002,conditional,conditional_assignment,E004,P2-CATEGORIA-FINAL,"IF IN3-TIPO-CLIENTE = 'P' AND P1-ALERTA = 'N' AND IN3-FLAG-BLOQUEIO <> 'S' THEN 'PRM' ELSE IF IN3-FLAG-BLOQUEIO = 'S' THEN 'BLK' ELSE P1-CATEGORIA",Final category derived from complementary profile plus intermediate category
+R037,S002,conditional,conditional_assignment,E004,P2-MSG-FINAL,"IF MATCH THEN 'REGISTRO CRUZADO COM INPUT3...' ELSE 'SEM CORRESPONDENCIA NO INPUT3...'",Final message depends on cross-file match
+R038,S002,conditional,conditional_assignment,E004,P2-DATA-REF,"IF IN3-CHAVE = P1-CHAVE THEN IN3-DATA-REF ELSE ZEROES",Reference date derived from complementary match

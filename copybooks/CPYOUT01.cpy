@@ -1,0 +1,25 @@
+       01  REG-OUT.
+           05 OUT-ORIGEM             PIC X(01).
+           05 OUT-CHAVE              PIC X(10).
+           05 OUT-NOME               PIC X(30).
+           05 OUT-STATUS             PIC X(01).
+           05 OUT-CODIGO-DB2         PIC X(05).
+           05 OUT-DATA-CAD           PIC X(10).
+           05 OUT-TIPO-SAIDA         PIC X(02).
+           05 OUT-CANAL-SAIDA        PIC X(02).
+           05 OUT-OCORRENCIA         PIC X(03).
+           05 OUT-AGENCIA            PIC 9(04).
+           05 OUT-CONTA              PIC 9(08).
+           05 OUT-DOCUMENTO          PIC X(14).
+           05 OUT-QTDE               PIC 9(05).
+           05 OUT-FATOR              PIC 9(03)V99.
+           05 OUT-VALOR-BASE         PIC 9(09)V99.
+           05 OUT-PRECO-DB2          PIC 9(07)V99.
+           05 OUT-VALOR-CALC         PIC 9(11)V99.
+           05 OUT-TOTAL-GERAL        PIC 9(11)V99.
+           05 OUT-HARD1              PIC X(10).
+           05 OUT-HARD2              PIC X(10).
+           05 OUT-HARD3              PIC X(10).
+           05 OUT-MSG                PIC X(40).
+           05 OUT-FILLER             PIC X(74).
+           05 OUT-HARD-JCL           PIC X(10).

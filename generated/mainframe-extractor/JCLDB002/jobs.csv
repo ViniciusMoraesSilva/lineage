@@ -1,0 +1,2 @@
+job_id,job_name,jcl_artifact_id,system,subsystem,description
+J001,JCLDB002,A001,mainframe,file_postprocess,Two-step COBOL flow that enriches JCLDB001 output and crosses it with complementary input
