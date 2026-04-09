@@ -1,0 +1,3 @@
+step_output_id,step_id,ddname,entity_id,usage,disposition
+SO001,S001,SAIDA1,E002,write,PASS
+SO002,S002,SAIDAF,E004,write,NEW_CATLG

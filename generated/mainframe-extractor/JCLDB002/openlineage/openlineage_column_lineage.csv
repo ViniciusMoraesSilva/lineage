@@ -1,0 +1,56 @@
+run_id,target_dataset_namespace,target_dataset_name,target_column,source_dataset_namespace,source_dataset_name,source_column,transformation_type,transformation_subtype,description
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-CHAVE,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-CHAVE,move,copia_identidade,Key copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-ORIGEM,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-ORIGEM,move,copia_identidade,Origin copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-NOME,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-NOME,move,copia_identidade,Name copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-STATUS,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-STATUS,move,copia_identidade,Status copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-TOTAL-GERAL,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-TOTAL-GERAL,move,copia_identidade,Total copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-VALOR-CALC,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-VALOR-CALC,move,copia_identidade,Calculated value copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-OCORRENCIA,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-OCORRENCIA,move,copia_identidade,Occurrence copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-TIPO-SAIDA,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-TIPO-SAIDA,move,copia_identidade,Output type copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-CODIGO-DB2,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-CODIGO-DB2,move,copia_identidade,DB2 code copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-DATA-CAD,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-DATA-CAD,move,copia_identidade,Registration date copied from JCLDB001 output
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-CATEGORIA,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-STATUS,conditional,constante_condicional,Category depends on status and total
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-CATEGORIA,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-TOTAL-GERAL,conditional,constante_condicional,Category depends on status and total
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-CANAL-GRUPO,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-CANAL-SAIDA,conditional,constante_condicional,Channel group depends on channel and origin
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-CANAL-GRUPO,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-ORIGEM,conditional,constante_condicional,Channel group depends on channel and origin
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-FAIXA-TOTAL,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-TOTAL-GERAL,conditional,constante_condicional,Range band depends on total amount
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-ALERTA,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-OCORRENCIA,conditional,constante_condicional,Alert depends on occurrence and status
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-ALERTA,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-STATUS,conditional,constante_condicional,Alert depends on occurrence and status
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-SCORE,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-VALOR-CALC,compute,calculo_derivado,Score computed from value and quantity
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-SCORE,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-QTDE,compute,calculo_derivado,Score computed from value and quantity
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-MSG-ANALISE,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-OCORRENCIA,conditional,constante_condicional,Analysis message depends on alert-driving fields
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-MSG-ANALISE,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-STATUS,conditional,constante_condicional,Analysis message depends on alert-driving fields
+RUN-JCLDB002-STEP010,mainframe://dataset,&&TMPDB201,P1-MSG-ANALISE,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-TOTAL-GERAL,conditional,constante_condicional,Analysis message depends on alert-driving fields
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-CHAVE,mainframe://dataset,&&TMPDB201,P1-CHAVE,move,copia_identidade,Key copied to final layout
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-ORIGEM,mainframe://dataset,&&TMPDB201,P1-ORIGEM,move,copia_identidade,Origin copied to final layout
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-NOME,mainframe://dataset,&&TMPDB201,P1-NOME,move,copia_identidade,Name copied to final layout
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-STATUS,mainframe://dataset,&&TMPDB201,P1-STATUS,move,copia_identidade,Status copied to final layout
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-TIPO-SAIDA,mainframe://dataset,&&TMPDB201,P1-TIPO-SAIDA,move,copia_identidade,Output type copied to final layout
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-OCORRENCIA,mainframe://dataset,&&TMPDB201,P1-OCORRENCIA,move,copia_identidade,Occurrence copied to final layout
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-CODIGO-DB2,mainframe://dataset,&&TMPDB201,P1-CODIGO-DB2,move,copia_identidade,DB2 code copied to final layout
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-SCORE,mainframe://dataset,&&TMPDB201,P1-SCORE,move,copia_identidade,Score copied to final layout
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-COD-PROCESSO,mainframe://dataset,&&TMPDB201,P1-COD-PROCESSO,move,copia_identidade,Process code propagated to final layout
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-SEGMENTO,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-COD-SEGMENTO,conditional,derivacao_condicional,Segment depends on complementary match
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-FLAG-BLOQUEIO,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-FLAG-BLOQUEIO,conditional,derivacao_condicional,Block flag depends on complementary match
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-LIMITE-CRED,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-LIMITE-CRED,conditional,derivacao_condicional,Credit limit depends on complementary match
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-VALOR-AJUSTADO,mainframe://dataset,&&TMPDB201,P1-VALOR-CALC,compute,calculo_derivado,Adjusted value computed from intermediate value and complementary factor
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-VALOR-AJUSTADO,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-FATOR-AJUSTE,compute,calculo_derivado,Adjusted value computed from intermediate value and complementary factor
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-PERC-LIMITE,mainframe://dataset,&&TMPDB201,P1-TOTAL-GERAL,compute,calculo_derivado,Percentage of limit computed from total and complementary limit
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-PERC-LIMITE,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-LIMITE-CRED,compute,calculo_derivado,Percentage of limit computed from total and complementary limit
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-CANAL-DESTINO,mainframe://dataset,&&TMPDB201,P1-CANAL-GRUPO,conditional,derivacao_condicional,Destination channel depends on intermediate channel group and complementary channel
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-CANAL-DESTINO,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-CANAL-REF,conditional,derivacao_condicional,Destination channel depends on intermediate channel group and complementary channel
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-FLAG-CROSS,mainframe://dataset,&&TMPDB201,P1-TOTAL-GERAL,conditional,constante_condicional,Cross flag depends on total versus credit limit
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-FLAG-CROSS,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-LIMITE-CRED,conditional,constante_condicional,Cross flag depends on total versus credit limit
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-PRIORIDADE,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-TIPO-CLIENTE,conditional,constante_condicional,Priority depends on complementary profile and alert flag
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-PRIORIDADE,mainframe://dataset,&&TMPDB201,P1-ALERTA,conditional,constante_condicional,Priority depends on complementary profile and alert flag
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-PRIORIDADE,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-FLAG-BLOQUEIO,conditional,constante_condicional,Priority depends on complementary profile and alert flag
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-DECISAO,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-TIPO-CLIENTE,conditional,constante_condicional,Decision depends on complementary profile and alert flag
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-DECISAO,mainframe://dataset,&&TMPDB201,P1-ALERTA,conditional,constante_condicional,Decision depends on complementary profile and alert flag
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-DECISAO,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-FLAG-BLOQUEIO,conditional,constante_condicional,Decision depends on complementary profile and alert flag
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-CATEGORIA-FINAL,mainframe://dataset,&&TMPDB201,P1-CATEGORIA,conditional,derivacao_condicional,Final category depends on profile branch plus intermediate category
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-CATEGORIA-FINAL,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-TIPO-CLIENTE,conditional,derivacao_condicional,Final category depends on profile branch plus intermediate category
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-CATEGORIA-FINAL,mainframe://dataset,&&TMPDB201,P1-ALERTA,conditional,derivacao_condicional,Final category depends on profile branch plus intermediate category
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-CATEGORIA-FINAL,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-FLAG-BLOQUEIO,conditional,derivacao_condicional,Final category depends on profile branch plus intermediate category
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-MSG-FINAL,mainframe://dataset,&&TMPDB201,P1-CHAVE,conditional,constante_condicional,Final message depends on cross-file match
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-MSG-FINAL,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-CHAVE,conditional,constante_condicional,Final message depends on cross-file match
+RUN-JCLDB002-STEP020,mainframe://dataset,APP.ARQ.SAIDA.CBLDB002,P2-DATA-REF,mainframe://dataset,APP.INPUT3.COMPLEMENTO,IN3-DATA-REF,conditional,derivacao_condicional,Reference date depends on complementary match

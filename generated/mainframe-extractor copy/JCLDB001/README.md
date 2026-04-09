@@ -1,6 +1,16 @@
 # JCLDB001 Sample Extractor Output
 
-This folder contains a sample canonical CSV bundle plus OpenLineage CSVs and `openlineage.jsonl` derived from:
+This folder contains a sample canonical CSV bundle plus OpenLineage CSVs and `openlineage.jsonl` derived from.
+
+Expected generated layout from the agent:
+
+- `importar/`
+  - canonical CSV bundle for Marquito import
+- `openlineage/`
+  - OpenLineage CSVs
+  - `openlineage.jsonl`
+
+Source artifacts used in this sample:
 
 - `JCL/JCLDB001.jcl`
 - `programas/CBLDB001.cbl`

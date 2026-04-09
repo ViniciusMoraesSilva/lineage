@@ -1,0 +1,30 @@
+rule_id,step_id,rule_type,rule_subtype,target_entity_id,target_column_name,expression,description
+R001,S001,copy,copia_identidade,E002,*,SYSUT1 -> SYSUT2,ICEGENER copies INPUT1 to temporary dataset without semantic change
+R002,S002,sort,reordenacao_registro,E004,*,SORT FIELDS=(1,10
+R003,S003,move,copia_identidade,E006,OUT-CHAVE,MOVE IN1-CHAVE TO OUT-CHAVE,INPUT1 key copied to output key in branch IN1
+R004,S003,move,copia_identidade,E006,OUT-AGENCIA,MOVE IN1-AGENCIA TO OUT-AGENCIA,Agency copied from INPUT1
+R005,S003,move,copia_identidade,E006,OUT-CONTA,MOVE IN1-CONTA TO OUT-CONTA,Account copied from INPUT1
+R006,S003,move,copia_identidade,E006,OUT-QTDE,MOVE IN1-QTDE TO OUT-QTDE,Quantity copied from INPUT1 branch
+R007,S003,move,copia_identidade,E006,OUT-FATOR,MOVE IN1-FATOR TO OUT-FATOR,Factor copied from INPUT1 branch
+R008,S003,move,copia_identidade,E006,OUT-CANAL-SAIDA,MOVE IN1-CANAL TO OUT-CANAL-SAIDA,Channel copied from INPUT1 unless DB2 overrides in INPUT2 branch
+R009,S003,db_lookup,busca_valor,E006,OUT-NOME,SELECT ... INTO HV-NOME-CLIENTE -> MOVE HV-NOME-CLIENTE TO OUT-NOME,Client name comes from DB2
+R010,S003,db_lookup,busca_valor,E006,OUT-STATUS,SELECT ... INTO HV-STATUS-CLIENTE -> MOVE HV-STATUS-CLIENTE TO OUT-STATUS,Client status comes from DB2
+R011,S003,db_lookup,busca_valor,E006,OUT-CODIGO-DB2,SELECT ... INTO HV-CODIGO-DB2 -> MOVE HV-CODIGO-DB2 TO OUT-CODIGO-DB2,DB2 code propagated to output
+R012,S003,db_lookup,busca_valor,E006,OUT-DATA-CAD,SELECT ... INTO HV-DATA-CADASTRO -> MOVE HV-DATA-CADASTRO TO OUT-DATA-CAD,Registration date comes from DB2
+R013,S003,db_lookup,busca_valor,E006,OUT-VALOR-BASE,SELECT ... INTO HV-VALOR-BASE -> MOVE HV-VALOR-BASE TO OUT-VALOR-BASE,Base value comes from DB2
+R014,S003,db_lookup,busca_valor,E006,OUT-PRECO-DB2,SELECT ... INTO HV-PRECO-UNITARIO -> MOVE HV-PRECO-UNITARIO TO OUT-PRECO-DB2,Price comes from DB2
+R015,S003,compute,calculo_derivado,E006,OUT-VALOR-CALC,HV-VALOR-BASE * IN1-FATOR,Calculated value for INPUT1 branch
+R016,S003,compute,calculo_derivado,E006,OUT-TOTAL-GERAL,IN1-QTDE * HV-PRECO-UNITARIO,Total for INPUT1 branch
+R017,S003,conditional,constante_condicional,E006,OUT-TIPO-SAIDA,IF IN1-TIPO-REG = 'A' THEN 'A1' ELSE 'A2',Output type derived from INPUT1 type
+R018,S003,conditional,constante_condicional,E006,OUT-OCORRENCIA,IF IN1-TIPO-REG = 'A' THEN '000' ELSE '010',Occurrence code derived from INPUT1 type
+R019,S003,conditional,constante_condicional,E006,OUT-MSG,IF HV-STATUS-CLIENTE = 'A' THEN ACTIVE MESSAGE ELSE INACTIVE MESSAGE,Message depends on DB2 status
+R020,S003,move,copia_identidade,E006,OUT-DOCUMENTO,MOVE IN2-DOCUMENTO TO OUT-DOCUMENTO,Document copied from INPUT2 branch
+R021,S003,move,copia_identidade,E006,OUT-QTDE,MOVE IN2-QUANTIDADE TO OUT-QTDE,Quantity copied from INPUT2 branch
+R022,S003,constant,constante_literal,E006,OUT-FATOR,MOVE '00150' TO OUT-FATOR,Constant factor for INPUT2 branch
+R023,S003,db_lookup,busca_valor,E006,OUT-CANAL-SAIDA,HV-CANAL-PREFERENC -> OUT-CANAL-SAIDA,DB2 preferred channel overrides INPUT2 default
+R024,S003,compute,calculo_derivado,E006,OUT-VALOR-CALC,IN2-VALOR-UNIT * HV-FATOR-DB2,Calculated value for INPUT2 branch
+R025,S003,compute,calculo_derivado,E006,OUT-TOTAL-GERAL,IN2-QUANTIDADE * HV-PRECO-UNITARIO,Total for INPUT2 branch
+R026,S003,conditional,constante_condicional,E006,OUT-TIPO-SAIDA,IF IN2-INDICADOR = 'S' THEN 'B1' ELSE 'B2',Output type derived from INPUT2 indicator
+R027,S003,conditional,constante_condicional,E006,OUT-OCORRENCIA,IF IN2-INDICADOR = 'S' THEN '000' ELSE '020',Occurrence code derived from INPUT2 indicator
+R028,S003,db_lookup,uso_chave_busca,E006,OUT-CHAVE,WS-CHAVE-PESQUISA -> DB2 WHERE CHAVE_CLIENTE = HV-CHAVE-CLIENTE,DB2 lookup is keyed by the incoming record key
+R029,S004,sort,copia_enriquecimento_registro,E007,*,SORT FIELDS=COPY + OUTREC OVERLAY=(291:C'JCLBATCH01'),Final SORT copies all output fields and injects JCL marker

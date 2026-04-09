@@ -1,0 +1,42 @@
+run_id,target_dataset_namespace,target_dataset_name,target_column,source_dataset_namespace,source_dataset_name,source_column,transformation_type,transformation_subtype,description
+RUN-JCLDB001-STEP010,mainframe://dataset,&&TMPIN001,IN1-CHAVE,mainframe://dataset,APP.INPUT1.ORIGINAL,IN1-CHAVE,copy,copia_identidade,ICEGENER field copy
+RUN-JCLDB001-STEP010,mainframe://dataset,&&TMPIN001,IN1-TIPO-REG,mainframe://dataset,APP.INPUT1.ORIGINAL,IN1-TIPO-REG,copy,copia_identidade,ICEGENER field copy
+RUN-JCLDB001-STEP010,mainframe://dataset,&&TMPIN001,IN1-AGENCIA,mainframe://dataset,APP.INPUT1.ORIGINAL,IN1-AGENCIA,copy,copia_identidade,ICEGENER field copy
+RUN-JCLDB001-STEP010,mainframe://dataset,&&TMPIN001,IN1-CONTA,mainframe://dataset,APP.INPUT1.ORIGINAL,IN1-CONTA,copy,copia_identidade,ICEGENER field copy
+RUN-JCLDB001-STEP010,mainframe://dataset,&&TMPIN001,IN1-QTDE,mainframe://dataset,APP.INPUT1.ORIGINAL,IN1-QTDE,copy,copia_identidade,ICEGENER field copy
+RUN-JCLDB001-STEP010,mainframe://dataset,&&TMPIN001,IN1-FATOR,mainframe://dataset,APP.INPUT1.ORIGINAL,IN1-FATOR,copy,copia_identidade,ICEGENER field copy
+RUN-JCLDB001-STEP020,mainframe://dataset,&&TMPIN002,IN2-CHAVE,mainframe://dataset,APP.INPUT2.ORIGINAL,IN2-CHAVE,sort,reordenacao_registro,SORT preserves field lineage
+RUN-JCLDB001-STEP020,mainframe://dataset,&&TMPIN002,IN2-DOCUMENTO,mainframe://dataset,APP.INPUT2.ORIGINAL,IN2-DOCUMENTO,sort,reordenacao_registro,SORT preserves field lineage
+RUN-JCLDB001-STEP020,mainframe://dataset,&&TMPIN002,IN2-VALOR-UNIT,mainframe://dataset,APP.INPUT2.ORIGINAL,IN2-VALOR-UNIT,sort,reordenacao_registro,SORT preserves field lineage
+RUN-JCLDB001-STEP020,mainframe://dataset,&&TMPIN002,IN2-QUANTIDADE,mainframe://dataset,APP.INPUT2.ORIGINAL,IN2-QUANTIDADE,sort,reordenacao_registro,SORT preserves field lineage
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-CHAVE,mainframe://dataset,&&TMPIN001,IN1-CHAVE,move,copia_identidade,INPUT1 branch key to output key
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-CHAVE,mainframe://dataset,&&TMPIN002,IN2-CHAVE,move,copia_identidade,INPUT2 branch key to output key
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-AGENCIA,mainframe://dataset,&&TMPIN001,IN1-AGENCIA,move,copia_identidade,Agency copied from INPUT1
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-CONTA,mainframe://dataset,&&TMPIN001,IN1-CONTA,move,copia_identidade,Account copied from INPUT1
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-DOCUMENTO,mainframe://dataset,&&TMPIN002,IN2-DOCUMENTO,move,copia_identidade,Document copied from INPUT2
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-QTDE,mainframe://dataset,&&TMPIN001,IN1-QTDE,move,copia_identidade,Quantity copied from INPUT1 branch
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-QTDE,mainframe://dataset,&&TMPIN002,IN2-QUANTIDADE,move,copia_identidade,Quantity copied from INPUT2 branch
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-NOME,mainframe://db2,APPDB.CLIENTE_MOVTO,NOME_CLIENTE,db_lookup,busca_valor,DB2 client name into output
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-STATUS,mainframe://db2,APPDB.CLIENTE_MOVTO,STATUS_CLIENTE,db_lookup,busca_valor,DB2 client status into output
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-CODIGO-DB2,mainframe://db2,APPDB.CLIENTE_MOVTO,CODIGO_DB2,db_lookup,busca_valor,DB2 code into output
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-DATA-CAD,mainframe://db2,APPDB.CLIENTE_MOVTO,DATA_CADASTRO,db_lookup,busca_valor,DB2 registration date into output
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-VALOR-BASE,mainframe://db2,APPDB.CLIENTE_MOVTO,VALOR_BASE,db_lookup,busca_valor,DB2 base value into output
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-PRECO-DB2,mainframe://db2,APPDB.CLIENTE_MOVTO,PRECO_UNITARIO,db_lookup,busca_valor,DB2 price into output
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-CANAL-SAIDA,mainframe://dataset,&&TMPIN001,IN1-CANAL,move,copia_identidade,INPUT1 channel to output
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-CANAL-SAIDA,mainframe://db2,APPDB.CLIENTE_MOVTO,CANAL_PREFERENC,db_lookup,busca_valor,DB2 preferred channel overrides in INPUT2 branch
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-VALOR-CALC,mainframe://db2,APPDB.CLIENTE_MOVTO,VALOR_BASE,compute,calculo_derivado,Calculated with DB2 base value and INPUT1 factor
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-VALOR-CALC,mainframe://dataset,&&TMPIN001,IN1-FATOR,compute,calculo_derivado,Calculated with DB2 base value and INPUT1 factor
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-VALOR-CALC,mainframe://dataset,&&TMPIN002,IN2-VALOR-UNIT,compute,calculo_derivado,Calculated with INPUT2 unit value and DB2 factor
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-VALOR-CALC,mainframe://db2,APPDB.CLIENTE_MOVTO,FATOR_DB2,compute,calculo_derivado,Calculated with INPUT2 unit value and DB2 factor
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-TOTAL-GERAL,mainframe://dataset,&&TMPIN001,IN1-QTDE,compute,calculo_derivado,INPUT1 quantity times DB2 price
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-TOTAL-GERAL,mainframe://dataset,&&TMPIN002,IN2-QUANTIDADE,compute,calculo_derivado,INPUT2 quantity times DB2 price
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-TOTAL-GERAL,mainframe://db2,APPDB.CLIENTE_MOVTO,PRECO_UNITARIO,compute,calculo_derivado,DB2 unit price used in total calculation
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-TIPO-SAIDA,mainframe://dataset,&&TMPIN001,IN1-TIPO-REG,conditional,constante_condicional,Conditional type based on INPUT1 type
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-TIPO-SAIDA,mainframe://dataset,&&TMPIN002,IN2-INDICADOR,conditional,constante_condicional,Conditional type based on INPUT2 indicator
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-OCORRENCIA,mainframe://dataset,&&TMPIN001,IN1-TIPO-REG,conditional,constante_condicional,Conditional occurrence based on INPUT1 type
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-OCORRENCIA,mainframe://dataset,&&TMPIN002,IN2-INDICADOR,conditional,constante_condicional,Conditional occurrence based on INPUT2 indicator
+RUN-JCLDB001-STEP030,mainframe://dataset,&&TMPOUT03,OUT-MSG,mainframe://db2,APPDB.CLIENTE_MOVTO,STATUS_CLIENTE,conditional,constante_condicional,Message depends on DB2 status
+RUN-JCLDB001-STEP040,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-CHAVE,mainframe://dataset,&&TMPOUT03,OUT-CHAVE,sort,copia_enriquecimento_registro,Final SORT preserves key
+RUN-JCLDB001-STEP040,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-NOME,mainframe://dataset,&&TMPOUT03,OUT-NOME,sort,copia_enriquecimento_registro,Final SORT preserves name
+RUN-JCLDB001-STEP040,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-STATUS,mainframe://dataset,&&TMPOUT03,OUT-STATUS,sort,copia_enriquecimento_registro,Final SORT preserves status
+RUN-JCLDB001-STEP040,mainframe://dataset,APP.ARQ.SAIDA.CBLDB001,OUT-TOTAL-GERAL,mainframe://dataset,&&TMPOUT03,OUT-TOTAL-GERAL,sort,copia_enriquecimento_registro,Final SORT preserves total

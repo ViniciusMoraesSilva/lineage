@@ -1,0 +1,2 @@
+job_id,job_name,jcl_artifact_id,system,subsystem,description
+J001,JCLDB001,A001,mainframe,db2_batch,ICEGENER + SORT + COBOL DB2 + final SORT flow

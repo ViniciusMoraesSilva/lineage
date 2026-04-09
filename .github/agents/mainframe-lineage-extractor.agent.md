@@ -28,9 +28,9 @@ COBOL Analysis, JCL Analysis, Copybook Parsing, DCLGEN Resolution, DB2 Host Vari
   4. Derive column mappings and transformation rules from program logic.
   5. Read the JCL that invokes the program and identify `JOB`, `STEP`, `PGM`, `RUN PROGRAM(...)`, DD names, DSNs, temporary datasets, utilities, and ordering.
   6. Reconcile logical program files with JCL DD names and physical datasets.
-  7. Emit canonical CSV bundle.
-  8. Emit OpenLineage intermediary CSVs.
-  9. Emit `openlineage.jsonl`.
+  7. Emit canonical CSV bundle under `importar/`.
+  8. Emit OpenLineage intermediary CSVs under `openlineage/`.
+  9. Emit `openlineage/openlineage.jsonl`.
 - Confidence rules:
   - `high`: explicit program statement or explicit JCL/DD/DCLGEN evidence.
   - `medium`: strong inferred linkage from naming and structure.
@@ -175,6 +175,38 @@ Mapping guidance:
 
 </openlineage_csv_contract>
 
+<output_layout>
+
+For each extracted job/package, emit a single output root containing exactly these two subfolders:
+
+- `importar/`
+  - canonical CSV bundle for Marquito import
+  - required files:
+    - `artifacts.csv`
+    - `jobs.csv`
+    - `steps.csv`
+    - `entities.csv`
+    - `entity_columns.csv`
+    - `step_inputs.csv`
+    - `step_outputs.csv`
+    - `column_mappings.csv`
+    - `transform_rules.csv`
+    - `evidence.csv`
+
+- `openlineage/`
+  - OpenLineage intermediary CSVs plus serialized JSONL events
+  - required files:
+    - `openlineage_runs.csv`
+    - `openlineage_jobs.csv`
+    - `openlineage_inputs.csv`
+    - `openlineage_outputs.csv`
+    - `openlineage_column_lineage.csv`
+    - `openlineage.jsonl`
+
+Do not emit these files flattened at the package root when the folder structure above is being produced.
+
+</output_layout>
+
 <jsonl_rules>
 - Emit one OpenLineage event per executable step.
 - Each step becomes one OpenLineage `job`.
@@ -185,12 +217,13 @@ Mapping guidance:
 - Build column lineage facets from `column_mappings.csv`.
 - Enrich transformations from `transform_rules.csv` using the standardized subtype taxonomy.
 - Keep `eventType` as `COMPLETE` unless a different lifecycle is explicitly requested.
+- Always serialize the final JSONL file as `openlineage/openlineage.jsonl`.
 </jsonl_rules>
 
 <deliverables>
-- Canonical CSV bundle is mandatory.
-- OpenLineage intermediary CSVs are mandatory.
-- `openlineage.jsonl` is mandatory.
+- Canonical CSV bundle is mandatory and must be emitted under `importar/`.
+- OpenLineage intermediary CSVs are mandatory and must be emitted under `openlineage/`.
+- `openlineage/openlineage.jsonl` is mandatory.
 - `evidence.csv` is mandatory and must preserve traceability for important links.
 </deliverables>
 
