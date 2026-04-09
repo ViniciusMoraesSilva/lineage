@@ -15,6 +15,12 @@ interface LoadedBundle {
   data: ParsedLineage;
 }
 
+interface ResolvedFieldRule extends ParsedFieldRule {
+  inherited: boolean;
+  originFieldKey: string;
+  upstreamDistance: number;
+}
+
 const STORAGE_KEY = 'mainframe-lineage-loaded-bundles-v1';
 const SELECTED_JCL_STORAGE_KEY = 'mainframe-lineage-selected-jcl-v1';
 
@@ -397,13 +403,84 @@ export default function MainframePage() {
 function resolveFieldRules(
   data: ParsedLineage,
   selectedField: { datasetKey: string; field: string } | null,
-): ParsedFieldRule[] {
+): ResolvedFieldRule[] {
   if (!selectedField || !data.fieldRules) {
     return [];
   }
 
-  const key = `${selectedField.datasetKey}::${selectedField.field}`;
-  return data.fieldRules[key] || [];
+  const selectedFieldKey = `${selectedField.datasetKey}::${selectedField.field}`;
+  const inboundEdges = new Map<string, Array<{ sourceFieldKey: string }>>();
+
+  data.columnLineageEdges.forEach((edge) => {
+    const targetFieldKey = `${edge.targetDataset}::${edge.targetField}`;
+    const sourceFieldKey = `${edge.sourceDataset}::${edge.sourceField}`;
+    const existingEdges = inboundEdges.get(targetFieldKey) || [];
+    existingEdges.push({ sourceFieldKey });
+    inboundEdges.set(targetFieldKey, existingEdges);
+  });
+
+  const queue = [{ fieldKey: selectedFieldKey, distance: 0 }];
+  const visited = new Set<string>();
+  const collectedRules = new Map<string, ResolvedFieldRule>();
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || visited.has(current.fieldKey)) {
+      continue;
+    }
+
+    visited.add(current.fieldKey);
+
+    (data.fieldRules[current.fieldKey] || []).forEach((rule) => {
+      const dedupeKey = `${rule.ruleId}::${rule.stepId}::${rule.expression}`;
+      const resolvedRule: ResolvedFieldRule = {
+        ...rule,
+        inherited: current.fieldKey !== selectedFieldKey,
+        originFieldKey: current.fieldKey,
+        upstreamDistance: current.distance,
+      };
+      const existingRule = collectedRules.get(dedupeKey);
+
+      if (
+        !existingRule ||
+        resolvedRule.upstreamDistance < existingRule.upstreamDistance ||
+        (resolvedRule.upstreamDistance === existingRule.upstreamDistance && !resolvedRule.inherited && existingRule.inherited)
+      ) {
+        collectedRules.set(dedupeKey, resolvedRule);
+      }
+    });
+
+    (inboundEdges.get(current.fieldKey) || []).forEach((edge) => {
+      if (!visited.has(edge.sourceFieldKey)) {
+        queue.push({ fieldKey: edge.sourceFieldKey, distance: current.distance + 1 });
+      }
+    });
+  }
+
+  return Array.from(collectedRules.values()).sort((left, right) => {
+    if (left.inherited !== right.inherited) {
+      return left.inherited ? 1 : -1;
+    }
+    if (left.upstreamDistance !== right.upstreamDistance) {
+      return left.upstreamDistance - right.upstreamDistance;
+    }
+    const leftStep = left.stepName || left.stepId || '';
+    const rightStep = right.stepName || right.stepId || '';
+    const stepCompare = leftStep.localeCompare(rightStep);
+    if (stepCompare !== 0) {
+      return stepCompare;
+    }
+    return left.ruleId.localeCompare(right.ruleId);
+  });
+}
+
+function formatFieldKey(fieldKey: string): string {
+  const parts = fieldKey.split('::');
+  if (parts.length < 3) {
+    return fieldKey;
+  }
+
+  return `${parts.slice(0, 2).join('::')} :: ${parts.slice(2).join('::')}`;
 }
 
 function MainframeRulePanel({
@@ -413,7 +490,7 @@ function MainframeRulePanel({
 }: {
   isDark: boolean;
   selectedField: { datasetKey: string; field: string } | null;
-  rules: ParsedFieldRule[];
+  rules: ResolvedFieldRule[];
 }) {
   return (
     <section style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 24px 32px' }}>
@@ -440,7 +517,7 @@ function MainframeRulePanel({
           </div>
         ) : !rules.length ? (
           <div style={{ fontSize: '14px', color: isDark ? '#A19F9D' : '#605E5C' }}>
-            Este campo nao possui regras explicitas no bundle canônico.
+            Este campo nao possui regras explicitas nem regras herdadas pelo lineage upstream.
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '12px', marginTop: '14px' }}>
@@ -461,7 +538,13 @@ function MainframeRulePanel({
                   <RuleBadge isDark={isDark} label={formatRawTransformation(rule.ruleType, rule.ruleSubtype)} />
                   {rule.stepName ? <RuleBadge isDark={isDark} label={rule.stepName} /> : null}
                   {rule.programName ? <RuleBadge isDark={isDark} label={rule.programName} /> : null}
+                  {rule.inherited ? <RuleBadge isDark={isDark} label={`Herdada (${rule.upstreamDistance})`} accent /> : null}
                 </div>
+                {rule.inherited ? (
+                  <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C', marginBottom: '8px' }}>
+                    Origem upstream: {formatFieldKey(rule.originFieldKey)}
+                  </div>
+                ) : null}
                 <div style={{ fontSize: '13px', color: isDark ? '#FAF9F8' : '#323130', fontFamily: 'monospace', marginBottom: '8px' }}>
                   {rule.expression || 'Sem expressao'}
                 </div>
