@@ -48,53 +48,73 @@ COBOL Analysis, JCL Analysis, Copybook Parsing, DCLGEN Resolution, DB2 Host Vari
 
 <standard_transformation_taxonomy>
 
-Use these canonical values for `transform_rules.csv.rule_subtype` and `openlineage_column_lineage.csv.transformation_subtype`:
+Use estes valores canônicos para `transform_rules.csv.rule_subtype` e `openlineage_column_lineage.csv.transformation_subtype`:
 
-- `pass_through`
-  - Semantic meaning: value copied semantically unchanged from source to target field.
-  - Typical evidence: COBOL `MOVE A TO B`, IEBGENER/ICEGENER dataset copy, field-to-field propagation.
-  - Typical raw origins: legacy `identity`, `direct`.
+- `copia_identidade`
+  - Significado semântico: cópia campo-a-campo sem mudança semântica de negócio.
+  - Evidências típicas: COBOL `MOVE A TO B`, propagação direta de campo, IEBGENER/ICEGENER puro.
+  - Quando usar: quando o valor do campo alvo preserva o mesmo significado do campo origem.
 
-- `reorder_only`
-  - Semantic meaning: records are reordered or physically reorganized but field values are preserved.
-  - Typical evidence: `SORT FIELDS=...` without field mutation.
-  - Typical raw origins: legacy `identity_preserving`.
+- `reordenacao_registro`
+  - Significado semântico: reordenação física/lógica do registro sem mutação do conteúdo dos campos.
+  - Evidências típicas: `SORT FIELDS=...` sem `INREC/OUTREC`, `SUM`, `BUILD` ou `OVERLAY` alterando o campo.
+  - Quando usar: quando a transformação atua na ordem/apresentação do registro, e não no valor do campo.
 
-- `lookup_fetch`
-  - Semantic meaning: field populated from external lookup, usually DB2.
-  - Typical evidence: `SELECT ... INTO host-variable` followed by output propagation.
-  - Typical raw origins: legacy `select_into`.
+- `copia_enriquecimento_registro`
+  - Significado semântico: cópia majoritária do registro com enriquecimento, overlay ou injeção pontual de conteúdo.
+  - Evidências típicas: `OUTREC OVERLAY`, `INREC OVERLAY`, `SORT FIELDS=COPY` com inclusão de marcador, utilitário que preserva a base do registro mas adiciona conteúdo.
+  - Quando usar: quando a maior parte do registro é preservada, mas existe mutação pontual induzida por utilitário/JCL.
 
-- `lookup_key`
-  - Semantic meaning: field participates as the lookup/search key for external fetch.
-  - Typical evidence: host variable in `WHERE`, join/search predicate.
-  - Typical raw origins: legacy `join_key`.
+- `busca_valor`
+  - Significado semântico: valor obtido de fonte externa e carregado no campo alvo.
+  - Evidências típicas: `SELECT ... INTO`, `FETCH` para host variable seguido de `MOVE` para saída.
+  - Quando usar: quando o campo alvo é efetivamente populado com valor vindo de lookup, normalmente DB2.
 
-- `arithmetic_compute`
-  - Semantic meaning: field derived by arithmetic or formula.
-  - Typical evidence: COBOL `COMPUTE`, arithmetic expressions, aggregation formulas.
-  - Typical raw origins: legacy `multiply`.
+- `uso_chave_busca`
+  - Significado semântico: campo usado como chave, predicado ou critério para localizar dado externo.
+  - Evidências típicas: host variable em `WHERE`, predicado de busca, chave de acesso ao lookup.
+  - Quando usar: quando o campo participa da busca, mas não é o valor retornado para a saída.
 
-- `conditional_assignment`
-  - Semantic meaning: field derived by decision branch.
-  - Typical evidence: COBOL `IF`, `EVALUATE`, branch-driven assignments.
-  - Typical raw origins: legacy `if_else`.
+- `calculo_derivado`
+  - Significado semântico: valor derivado por cálculo numérico ou fórmula.
+  - Evidências típicas: `COMPUTE`, soma, multiplicação, divisão, percentual, agregação numérica.
+  - Quando usar: quando a saída depende de operação matemática explícita.
 
-- `constant_assignment`
-  - Semantic meaning: field assigned from literal or hard-coded constant.
-  - Typical evidence: `MOVE 'X' TO Y`, `VALUE` clause propagated to output, JCL overlay literal.
-  - Typical raw origins: legacy `literal`.
+- `derivacao_condicional`
+  - Significado semântico: valor derivado por decisão condicional usando campos, variáveis ou resultados não literais.
+  - Evidências típicas: `IF`, `EVALUATE`, ramos que escolhem entre campos/variáveis calculadas/host variables.
+  - Quando usar: quando a condição determina qual dado upstream será propagado ou derivado para a saída.
+
+- `constante_condicional`
+  - Significado semântico: valor atribuído por decisão condicional cujo resultado final é literal/hard code.
+  - Evidências típicas: `IF ... THEN '000' ELSE '010'`, `EVALUATE ... WHEN ... MOVE 'S' TO FLAG`.
+  - Quando usar: quando a lógica é condicional, mas os valores produzidos em cada ramo são constantes.
+
+- `constante_literal`
+  - Significado semântico: valor preenchido por literal fixo fora de uma derivação condicional relevante.
+  - Evidências típicas: `MOVE 'X' TO Y`, `VALUE` clause propagada, overlay literal direto.
+  - Quando usar: quando o valor é hard-coded sem depender de uma decisão de ramos para sua classificação principal.
+
+- `nao_classificada`
+  - Significado semântico: fallback para casos sem evidência suficiente ou ainda não mapeados.
+  - Quando usar: apenas quando não houver base segura para classificar.
+
+Regras de decisão para condicionais:
+- Se a expressão/atribuição condicional resultar em literais nos ramos finais, classifique como `constante_condicional`.
+- Se a expressão/atribuição condicional escolher entre campos, variáveis de trabalho, host variables ou valores derivados não literais, classifique como `derivacao_condicional`.
 
 Mapping guidance:
-- `copy/identity` -> `pass_through`
-- `move/direct` -> `pass_through`
-- `sort/identity_preserving` -> `reorder_only`
-- `sort/copy_overlay` -> `pass_through`
-- `db_lookup/select_into` -> `lookup_fetch`
-- `db_lookup/join_key` -> `lookup_key`
-- `compute/multiply` -> `arithmetic_compute`
-- `conditional/if_else` -> `conditional_assignment`
-- `constant/literal` -> `constant_assignment`
+- `copy/identity` -> `copia_identidade`
+- `move/direct` -> `copia_identidade`
+- `sort/identity_preserving` -> `reordenacao_registro`
+- `sort/copy_overlay` -> `copia_enriquecimento_registro`
+- `sort/overlay_enrichment` -> `copia_enriquecimento_registro`
+- `db_lookup/select_into` -> `busca_valor`
+- `db_lookup/join_key` -> `uso_chave_busca`
+- `compute/multiply` -> `calculo_derivado`
+- `conditional/if_else` -> `derivacao_condicional` ou `constante_condicional`, conforme a saída final
+- `constant/literal` -> `constante_literal`
+- `unknown` -> `nao_classificada`
 
 </standard_transformation_taxonomy>
 
@@ -127,7 +147,7 @@ Mapping guidance:
 `transform_rules.csv`
 - `rule_id,step_id,rule_type,rule_subtype,target_entity_id,target_column_name,expression,description`
 - `rule_type` preserves the technical family such as `move`, `copy`, `sort`, `db_lookup`, `compute`, `conditional`, `constant`
-- `rule_subtype` must use the standardized taxonomy: `pass_through`, `reorder_only`, `lookup_fetch`, `lookup_key`, `arithmetic_compute`, `conditional_assignment`, `constant_assignment`
+- `rule_subtype` must use the standardized taxonomy: `copia_identidade`, `reordenacao_registro`, `copia_enriquecimento_registro`, `busca_valor`, `uso_chave_busca`, `calculo_derivado`, `derivacao_condicional`, `constante_condicional`, `constante_literal`, `nao_classificada`
 
 `evidence.csv`
 - `evidence_id,related_type,related_id,artifact_id,location,excerpt,confidence`

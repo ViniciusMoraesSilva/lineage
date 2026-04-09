@@ -596,7 +596,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
             </button>
           ) : null}
           <span style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C' }}>
-            Busca destaca a coluna em laranja. O filtro de transformacao recorta o grafo para `pass_through`, `lookup_fetch`, `conditional_assignment` e similares.
+            Busca destaca a coluna em laranja. O filtro de transformacao recorta o grafo para `copia_identidade`, `busca_valor`, `constante_condicional` e similares.
           </span>
         </div>
       </div>
@@ -651,22 +651,35 @@ function resolveTransformationKey(edge: ColumnLineageEdge): string {
 
 function formatTransformationLabel(value: string): string {
   const labels: Record<string, string> = {
-    pass_through: 'Pass-through / copia direta',
-    reorder_only: 'Reordenacao sem alteracao',
-    lookup_fetch: 'Lookup DB2',
-    lookup_key: 'Chave de lookup DB2',
-    arithmetic_compute: 'Calculo aritmetico',
-    conditional_assignment: 'Atribuicao condicional',
-    constant_assignment: 'Constante / hard code',
+    copia_identidade: 'Copia de identidade',
+    reordenacao_registro: 'Reordenacao de registro',
+    copia_enriquecimento_registro: 'Copia com enriquecimento',
+    busca_valor: 'Busca de valor',
+    uso_chave_busca: 'Uso de chave de busca',
+    calculo_derivado: 'Calculo derivado',
+    derivacao_condicional: 'Derivacao condicional',
+    constante_condicional: 'Constante condicional',
+    constante_literal: 'Constante literal',
+    nao_classificada: 'Transformacao nao classificada',
+    pass_through: 'Copia de identidade',
+    reorder_only: 'Reordenacao de registro',
+    lookup_fetch: 'Busca de valor',
+    lookup_key: 'Uso de chave de busca',
+    arithmetic_compute: 'Calculo derivado',
+    conditional_assignment: 'Derivacao condicional',
+    constant_assignment: 'Constante literal',
     direct: 'Movimentacao direta',
     if_else: 'Condicional IF/ELSE',
     literal: 'Hard code / literal',
-    select_into: 'DB lookup / select into',
-    multiply: 'Calculo multiplicacao',
+    select_into: 'Busca via SELECT INTO',
+    multiply: 'Calculo por multiplicacao',
     identity: 'Identidade',
     identity_preserving: 'Identidade preservada',
     join_key: 'Chave de join',
     copy_overlay: 'Copia com overlay',
+    overlay_enrichment: 'Copia com enriquecimento',
+    unknown: 'Transformacao nao classificada',
+    unclassified: 'Transformacao nao classificada',
     move: 'MOVE',
     compute: 'COMPUTE',
     conditional: 'CONDICIONAL',

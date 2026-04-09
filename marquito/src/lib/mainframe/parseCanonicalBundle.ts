@@ -8,7 +8,10 @@ import {
   ParsedArtifact,
   ParsedEvidence,
 } from '@/lib/types';
-import { normalizeMainframeTransformation } from '@/lib/mainframe/transformationCatalog';
+import {
+  isMainframeHardCodeTransformation,
+  normalizeMainframeTransformation,
+} from '@/lib/mainframe/transformationCatalog';
 
 type CsvRecord = Record<string, string>;
 
@@ -286,6 +289,12 @@ export function parseCanonicalBundle(files: CanonicalBundleFiles): ParsedLineage
     addDatasetContext(sourceDataset, stepId);
     addDatasetContext(targetDataset, stepId);
 
+    const normalizedMappingTransformation = normalizeMainframeTransformation(
+      rule?.rule_type || 'copy',
+      rule?.rule_subtype || 'direct',
+      rule?.expression || mapping.expression,
+    );
+
     addColumnLineageEdge(columnLineageEdgeMap, {
       sourceDataset: sourceKey,
       sourceField: mapping.source_column_name,
@@ -293,14 +302,8 @@ export function parseCanonicalBundle(files: CanonicalBundleFiles): ParsedLineage
       targetField: mapping.target_column_name,
       transformationType: rule?.rule_type || 'copy',
       transformationSubtype: rule?.rule_subtype || 'direct',
-      standardTransformationKey: normalizeMainframeTransformation(
-        rule?.rule_type || 'copy',
-        rule?.rule_subtype || 'direct',
-      ).key,
-      standardTransformationLabel: normalizeMainframeTransformation(
-        rule?.rule_type || 'copy',
-        rule?.rule_subtype || 'direct',
-      ).label,
+      standardTransformationKey: normalizedMappingTransformation.key,
+      standardTransformationLabel: normalizedMappingTransformation.label,
       stepId,
       stepName: stepById.get(stepId)?.step_name,
     });
@@ -328,19 +331,18 @@ export function parseCanonicalBundle(files: CanonicalBundleFiles): ParsedLineage
         ...(evidenceByRelated.get(`rule::${rule.rule_id}`) || []),
         ...(evidenceByRelated.get(`step::${rule.step_id}`) || []),
       ];
+      const normalizedRuleTransformation = normalizeMainframeTransformation(
+        rule.rule_type,
+        rule.rule_subtype,
+        rule.expression,
+      );
       fieldRulesMap.get(fieldKey)?.push({
         ruleId: rule.rule_id,
         stepId: rule.step_id,
         ruleType: rule.rule_type,
         ruleSubtype: rule.rule_subtype,
-        standardTransformationKey: normalizeMainframeTransformation(
-          rule.rule_type,
-          rule.rule_subtype,
-        ).key,
-        standardTransformationLabel: normalizeMainframeTransformation(
-          rule.rule_type,
-          rule.rule_subtype,
-        ).label,
+        standardTransformationKey: normalizedRuleTransformation.key,
+        standardTransformationLabel: normalizedRuleTransformation.label,
         expression: rule.expression,
         description: rule.description,
         stepName: step?.step_name,
@@ -352,7 +354,7 @@ export function parseCanonicalBundle(files: CanonicalBundleFiles): ParsedLineage
     });
 
   transformRules
-    .filter((rule) => rule.rule_type === 'constant' || rule.rule_subtype === 'literal')
+    .filter((rule) => isMainframeHardCodeTransformation(rule.rule_type, rule.rule_subtype, rule.expression))
     .forEach((rule) => {
       const targetEntity = entityById.get(rule.target_entity_id);
       if (!targetEntity) {
@@ -395,10 +397,12 @@ export function parseCanonicalBundle(files: CanonicalBundleFiles): ParsedLineage
         standardTransformationKey: normalizeMainframeTransformation(
           rule.rule_type,
           rule.rule_subtype || 'literal',
+          rule.expression,
         ).key,
         standardTransformationLabel: normalizeMainframeTransformation(
           rule.rule_type,
           rule.rule_subtype || 'literal',
+          rule.expression,
         ).label,
         stepId,
         stepName: stepById.get(stepId)?.step_name,

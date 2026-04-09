@@ -13,12 +13,15 @@ The extraction follows a program-first strategy and then reconciles physical dat
 
 Transformation taxonomy in this sample is standardized as:
 
-- `pass_through`
-- `reorder_only`
-- `lookup_fetch`
-- `lookup_key`
-- `arithmetic_compute`
-- `conditional_assignment`
-- `constant_assignment`
+- `copia_identidade`
+- `reordenacao_registro`
+- `copia_enriquecimento_registro`
+- `busca_valor`
+- `uso_chave_busca`
+- `calculo_derivado`
+- `derivacao_condicional`
+- `constante_condicional`
+- `constante_literal`
+- `nao_classificada`
 
 `rule_type` keeps the raw technical family such as `move`, `copy`, `sort`, `db_lookup`, `compute`, `conditional`, and `constant`, while `rule_subtype` carries the normalized semantic category.
