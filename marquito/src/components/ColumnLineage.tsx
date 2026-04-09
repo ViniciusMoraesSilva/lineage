@@ -11,6 +11,8 @@ import {
   MarkerType,
   Handle,
   NodeProps,
+  useNodesState,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
@@ -265,6 +267,40 @@ function splitColumnKey(key: string): [string, string, string] {
   return [key.slice(0, firstSep), key.slice(firstSep + 2, secondSep), key.slice(secondSep + 2)];
 }
 
+function ResetLayoutButton({ initialNodes }: { initialNodes: Node[] }) {
+  const { fitView, setNodes } = useReactFlow();
+  const { isDark } = useThemeContext();
+
+  const handleReset = useCallback(() => {
+    setNodes(initialNodes);
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+  }, [fitView, initialNodes, setNodes]);
+
+  return (
+    <button
+      onClick={handleReset}
+      title="Resetar layout"
+      style={{
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        zIndex: 5,
+        padding: '6px 12px',
+        fontSize: '11px',
+        fontFamily: "'Segoe UI', sans-serif",
+        fontWeight: 600,
+        backgroundColor: isDark ? '#252423' : '#FFFFFF',
+        color: isDark ? '#D2D0CE' : '#323130',
+        border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+        borderRadius: '4px',
+        cursor: 'pointer',
+      }}
+    >
+      Resetar layout
+    </button>
+  );
+}
+
 const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
   const { isDark } = useThemeContext();
   const [selectedColumn, setSelectedColumn] = useState<{ datasetKey: string; field: string } | null>(null);
@@ -494,12 +530,34 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     return { finalNodes, finalEdges };
   }, [baseNodes, baseEdges, selectedColumn, columnFilter, activeEdges, connectedFields, handleColumnClick, isDark]);
 
-  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
-    () => getLayoutedElements(finalNodes, baseEdges),
-    [finalNodes, baseEdges]
+  const { nodes: initialNodes } = useMemo(
+    () => getLayoutedElements(baseNodes, baseEdges),
+    [baseNodes, baseEdges]
   );
 
-  // Use finalEdges for rendering (with highlighting) but layoutedNodes for positions
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
+
+  const renderNodes = useMemo(() => {
+    const currentNodesById = new Map(nodes.map((node) => [node.id, node]));
+    const finalNodesById = new Map(finalNodes.map((node) => [node.id, node]));
+
+    return initialNodes.map((initialNode) => {
+      const currentNode = currentNodesById.get(initialNode.id);
+      const finalNode = finalNodesById.get(initialNode.id);
+
+      return {
+        ...initialNode,
+        ...currentNode,
+        position: currentNode?.position ?? initialNode.position,
+        data: finalNode?.data ?? initialNode.data,
+      };
+    });
+  }, [nodes, initialNodes, finalNodes]);
+
   const renderEdges = useMemo(() => {
     return finalEdges;
   }, [finalEdges]);
@@ -607,11 +665,13 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           border: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
           borderRadius: '8px',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         <ReactFlow
-          nodes={layoutedNodes}
+          nodes={renderNodes}
           edges={renderEdges}
+          onNodesChange={onNodesChange}
           nodeTypes={nodeTypes}
           fitView
           fitViewOptions={{ padding: 0.2 }}
@@ -620,6 +680,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           proOptions={{ hideAttribution: true }}
           onPaneClick={handlePaneClick}
         >
+          <ResetLayoutButton initialNodes={initialNodes} />
           <Background color={isDark ? '#323130' : '#EDEBE9'} gap={20} size={1} />
           <Controls
             showInteractive={false}

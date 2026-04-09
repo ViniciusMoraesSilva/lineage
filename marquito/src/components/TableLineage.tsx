@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -11,6 +11,8 @@ import {
   MarkerType,
   Handle,
   NodeProps,
+  useNodesState,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
@@ -21,7 +23,6 @@ interface TableLineageProps {
   data: ParsedLineage;
 }
 
-// Custom node for datasets
 function DatasetNode({ data }: NodeProps) {
   const nodeData = data as {
     label: string;
@@ -119,7 +120,6 @@ function DatasetNode({ data }: NodeProps) {
   );
 }
 
-// Custom node for jobs
 function JobNode({ data }: NodeProps) {
   const nodeData = data as {
     label: string;
@@ -227,15 +227,48 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'LR') {
   return { nodes: layoutedNodes, edges };
 }
 
+function ResetLayoutButton({ initialNodes }: { initialNodes: Node[] }) {
+  const { fitView, setNodes } = useReactFlow();
+  const { isDark } = useThemeContext();
+
+  const handleReset = useCallback(() => {
+    setNodes(initialNodes);
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+  }, [fitView, initialNodes, setNodes]);
+
+  return (
+    <button
+      onClick={handleReset}
+      title="Resetar layout"
+      style={{
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        zIndex: 5,
+        padding: '6px 12px',
+        fontSize: '11px',
+        fontFamily: "'Segoe UI', sans-serif",
+        fontWeight: 600,
+        backgroundColor: isDark ? '#252423' : '#FFFFFF',
+        color: isDark ? '#D2D0CE' : '#323130',
+        border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+        borderRadius: '4px',
+        cursor: 'pointer',
+      }}
+    >
+      Resetar layout
+    </button>
+  );
+}
+
 const TableLineage = ({ data }: TableLineageProps) => {
   const { isDark } = useThemeContext();
 
-  const { initialNodes, initialEdges } = useMemo(() => {
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
     const addedNodes = new Set<string>();
 
-    // Add dataset nodes
     for (const ds of data.datasets) {
       const key = `${ds.namespace}::${ds.name}`;
       if (!addedNodes.has(key)) {
@@ -255,7 +288,6 @@ const TableLineage = ({ data }: TableLineageProps) => {
       }
     }
 
-    // Add job nodes
     for (const job of data.jobs) {
       if (!addedNodes.has(job.name)) {
         addedNodes.add(job.name);
@@ -275,7 +307,6 @@ const TableLineage = ({ data }: TableLineageProps) => {
       }
     }
 
-    // Add edges
     for (const edge of data.tableLineageEdges) {
       if (addedNodes.has(edge.source) && addedNodes.has(edge.target)) {
         edges.push({
@@ -289,13 +320,14 @@ const TableLineage = ({ data }: TableLineageProps) => {
       }
     }
 
-    return { initialNodes: nodes, initialEdges: edges };
+    return getLayoutedElements(nodes, edges);
   }, [data, isDark]);
 
-  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
-    () => getLayoutedElements(initialNodes, initialEdges),
-    [initialNodes, initialEdges]
-  );
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
 
   return (
     <section style={{ padding: '0 24px 32px', maxWidth: '1600px', margin: '0 auto' }}>
@@ -328,11 +360,13 @@ const TableLineage = ({ data }: TableLineageProps) => {
           border: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
           borderRadius: '8px',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         <ReactFlow
-          nodes={layoutedNodes}
-          edges={layoutedEdges}
+          nodes={nodes}
+          edges={initialEdges}
+          onNodesChange={onNodesChange}
           nodeTypes={nodeTypes}
           fitView
           fitViewOptions={{ padding: 0.2 }}
@@ -340,6 +374,7 @@ const TableLineage = ({ data }: TableLineageProps) => {
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
         >
+          <ResetLayoutButton initialNodes={initialNodes} />
           <Background color={isDark ? '#323130' : '#EDEBE9'} gap={20} size={1} />
           <Controls
             showInteractive={false}
