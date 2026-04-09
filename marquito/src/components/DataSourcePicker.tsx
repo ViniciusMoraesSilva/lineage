@@ -13,24 +13,43 @@ import {
   Info20Regular,
 } from '@fluentui/react-icons';
 
+export interface UploadedLineageFile {
+  id: string;
+  fileName: string;
+  text: string;
+  eventCount: number;
+}
+
 interface DataSourcePickerProps {
-  onDataLoaded: (data: ParsedLineage) => void;
+  loadedFiles: UploadedLineageFile[];
+  onFilesAdded: (files: UploadedLineageFile[]) => void;
+  onFileRemoved: (fileId: string) => void;
+  onUseUploaded: () => void;
+  onSampleLoaded: (data: ParsedLineage) => void;
   onError: (error: string) => void;
   onLoading: (loading: boolean) => void;
 }
 
 const BLOB_BASE = 'https://rakirahman.blob.core.windows.net/public/datasets';
 
-const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePickerProps) => {
+const DataSourcePicker = ({
+  loadedFiles,
+  onFilesAdded,
+  onFileRemoved,
+  onUseUploaded,
+  onSampleLoaded,
+  onError,
+  onLoading,
+}: DataSourcePickerProps) => {
   const { isDark } = useThemeContext();
   const [mode, setMode] = useState<'choose' | 'upload' | null>('choose');
   const [uploadStatus, setUploadStatus] = useState<{
     state: 'idle' | 'validating' | 'valid' | 'invalid';
-    fileName?: string;
+    fileNames?: string[];
+    fileCount?: number;
     eventCount?: number;
     errors?: string[];
   }>({ state: 'idle' });
-  const [parsedFromUpload, setParsedFromUpload] = useState<ParsedLineage | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUseSample = async (localPath: string) => {
@@ -38,7 +57,7 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
     onLoading(true);
     try {
       const data = await fetchLineageData(localPath);
-      onDataLoaded(data);
+      onSampleLoaded(data);
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : 'Failed to load dataset');
     } finally {
@@ -54,51 +73,55 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
     link.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-    setUploadStatus({ state: 'validating', fileName: file.name });
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      const validation = validateJsonl(text);
-      if (validation.valid) {
-        try {
-          const parsed = parseLineageText(text);
-          setParsedFromUpload(parsed);
-          setUploadStatus({
-            state: 'valid',
+    setUploadStatus({ state: 'validating', fileNames: files.map((file) => file.name), fileCount: files.length });
+
+    try {
+      const filePayloads = await Promise.all(
+        files.map(async (file) => {
+          const text = await file.text();
+          const validation = validateJsonl(text);
+
+          if (!validation.valid) {
+            throw new Error(`${file.name}: ${validation.errors.join(' | ')}`);
+          }
+
+          return {
+            id: `${file.name}-${file.lastModified}-${Date.now()}`,
             fileName: file.name,
+            text,
             eventCount: validation.eventCount,
-          });
-        } catch (err: unknown) {
-          setUploadStatus({
-            state: 'invalid',
-            fileName: file.name,
-            errors: [err instanceof Error ? err.message : 'Failed to parse lineage data'],
-          });
-        }
-      } else {
-        setUploadStatus({
-          state: 'invalid',
-          fileName: file.name,
-          errors: validation.errors,
-        });
-      }
-    };
-    reader.onerror = () => {
-      setUploadStatus({ state: 'invalid', fileName: file.name, errors: ['Failed to read file.'] });
-    };
-    reader.readAsText(file);
-  };
+          } satisfies UploadedLineageFile;
+        }),
+      );
 
-  const handleUseUploaded = () => {
-    if (parsedFromUpload) {
-      setMode(null);
-      onDataLoaded(parsedFromUpload);
+      onFilesAdded(filePayloads);
+      setUploadStatus({
+        state: 'valid',
+        fileNames: filePayloads.map((payload) => payload.fileName),
+        fileCount: filePayloads.length,
+        eventCount: filePayloads.reduce((total, payload) => total + payload.eventCount, 0),
+      });
+    } catch (err: unknown) {
+      setUploadStatus({
+        state: 'invalid',
+        fileNames: files.map((file) => file.name),
+        fileCount: files.length,
+        errors: [err instanceof Error ? err.message : 'Failed to parse lineage data'],
+      });
+    } finally {
+      e.target.value = '';
     }
   };
+
+  const uploadSummary = uploadStatus.fileCount === 1
+    ? uploadStatus.fileNames?.[0] || '1 file'
+    : `${uploadStatus.fileCount || 0} arquivos`;
+
+  const uploadFileList = uploadStatus.fileNames?.join(', ');
 
   const cardBase: React.CSSProperties = {
     backgroundColor: isDark ? '#252423' : '#FFFFFF',
@@ -154,10 +177,9 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
             lineHeight: '1.5',
           }}
         >
-          Choose a sample dataset to explore, or upload your own OpenLineage JSONL file.
+          Choose a sample dataset to explore, or upload and accumulate your own OpenLineage JSONL files.
         </p>
 
-        {/* Sample datasets section */}
         <div
           style={{
             fontSize: '12px',
@@ -283,7 +305,6 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
           ))}
         </div>
 
-        {/* Upload custom section */}
         <div
           style={{
             fontSize: '12px',
@@ -343,12 +364,11 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
                 color: isDark ? '#A19F9D' : '#605E5C',
               }}
             >
-              Upload your own OpenLineage JSONL file — parsed entirely in your browser.
+              Add JSONL files incrementally, remove individual files, and visualize the aggregated lineage.
             </span>
           </div>
         </div>
 
-        {/* ── Divider ── */}
         <div
           style={{
             maxWidth: '900px',
@@ -358,7 +378,6 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
           }}
         />
 
-        {/* ── OpenLineage Visualized section ── */}
         <div
           style={{
             maxWidth: '900px',
@@ -390,7 +409,6 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
           </p>
           <ArchitectureDiagram />
 
-          {/* ── Numbered steps (simple text list) ── */}
           <ol
             style={{
               marginTop: '24px',
@@ -487,22 +505,9 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
             lineHeight: '1.5',
           }}
         >
-          Upload a file where each line is a valid OpenLineage JSON event. The file must contain{' '}
-          <code style={{ fontSize: '12px', backgroundColor: isDark ? '#323130' : '#F3F2F1', padding: '1px 4px', borderRadius: '3px' }}>
-            eventType
-          </code>
-          ,{' '}
-          <code style={{ fontSize: '12px', backgroundColor: isDark ? '#323130' : '#F3F2F1', padding: '1px 4px', borderRadius: '3px' }}>
-            job
-          </code>
-          , and{' '}
-          <code style={{ fontSize: '12px', backgroundColor: isDark ? '#323130' : '#F3F2F1', padding: '1px 4px', borderRadius: '3px' }}>
-            run
-          </code>{' '}
-          fields per line.
+          Add one or more files where each line is a valid OpenLineage JSON event. New uploads are accumulated instead of replacing previous ones.
         </p>
 
-        {/* Example download links */}
         <div
           style={{
             backgroundColor: isDark ? '#252423' : '#FFFFFF',
@@ -581,10 +586,10 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
           </div>
         </div>
 
-        {/* Upload area */}
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           accept=".json,.jsonl,.txt"
           onChange={handleFileChange}
           style={{ display: 'none' }}
@@ -595,10 +600,10 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
           onDrop={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            const file = e.dataTransfer.files?.[0];
-            if (file && fileInputRef.current) {
+            const files = Array.from(e.dataTransfer.files || []);
+            if (files.length && fileInputRef.current) {
               const dt = new DataTransfer();
-              dt.items.add(file);
+              files.forEach((file) => dt.items.add(file));
               fileInputRef.current.files = dt.files;
               fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
             }
@@ -633,7 +638,6 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
           </div>
         </div>
 
-        {/* Validation status */}
         {uploadStatus.state === 'validating' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isDark ? '#A19F9D' : '#605E5C', fontSize: '13px' }}>
             <div
@@ -647,7 +651,7 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
               }}
             />
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            Validating {uploadStatus.fileName}…
+            Validating {uploadSummary}…
           </div>
         )}
 
@@ -665,32 +669,13 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
               }}
             >
               <CheckmarkCircle20Filled />
-              {uploadStatus.fileName} — {uploadStatus.eventCount} valid events
+              {uploadSummary} — {uploadStatus.eventCount} valid events added
             </div>
-            <button
-              onClick={handleUseUploaded}
-              style={{
-                width: '100%',
-                padding: '10px 20px',
-                backgroundColor: '#0078D4',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: 600,
-                fontFamily: "'Segoe UI', sans-serif",
-                cursor: 'pointer',
-                transition: 'background-color 0.15s',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.backgroundColor = '#106EBE';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.backgroundColor = '#0078D4';
-              }}
-            >
-              Visualize Lineage
-            </button>
+            {uploadFileList ? (
+              <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C', marginBottom: '12px' }}>
+                {uploadFileList}
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -708,8 +693,13 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
               }}
             >
               <ErrorCircle20Filled />
-              Validation failed for {uploadStatus.fileName}
+              Validation failed for {uploadSummary}
             </div>
+            {uploadFileList ? (
+              <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C', marginBottom: '12px' }}>
+                {uploadFileList}
+              </div>
+            ) : null}
             <div
               style={{
                 backgroundColor: isDark ? 'rgba(164,38,44,0.1)' : 'rgba(164,38,44,0.06)',
@@ -735,9 +725,95 @@ const DataSourcePicker = ({ onDataLoaded, onError, onLoading }: DataSourcePicker
           </div>
         )}
 
-        {/* Back button */}
+        <div style={{ fontSize: '12px', color: isDark ? '#605E5C' : '#A19F9D', marginTop: '-4px', marginBottom: '8px' }}>
+          You can add files one by one, remove individual files, and preserve the accumulated lineage set.
+        </div>
+
+        <div
+          style={{
+            maxWidth: '520px',
+            width: '100%',
+            backgroundColor: isDark ? '#252423' : '#FFFFFF',
+            border: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
+            borderRadius: '8px',
+            padding: '16px',
+            marginTop: '12px',
+          }}
+        >
+          <div style={{ fontSize: '13px', fontWeight: 700, color: isDark ? '#FAF9F8' : '#323130', marginBottom: '10px' }}>
+            Arquivos carregados ({loadedFiles.length})
+          </div>
+          {!loadedFiles.length ? (
+            <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C' }}>
+              Nenhum arquivo carregado ainda.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '8px' }}>
+              {loadedFiles.map((file) => (
+                <div
+                  key={file.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: isDark ? '#201F1E' : '#FAF9F8',
+                    border: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: isDark ? '#FAF9F8' : '#323130' }}>
+                      {file.fileName}
+                    </div>
+                    <div style={{ fontSize: '11px', color: isDark ? '#A19F9D' : '#605E5C' }}>
+                      {file.eventCount} eventos válidos
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onFileRemoved(file.id)}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#A4262C',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      padding: 0,
+                    }}
+                  >
+                    remover
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onUseUploaded}
+            disabled={!loadedFiles.length}
+            style={{
+              width: '100%',
+              marginTop: '14px',
+              padding: '10px 20px',
+              backgroundColor: loadedFiles.length ? '#0078D4' : isDark ? '#323130' : '#EDEBE9',
+              color: loadedFiles.length ? '#FFFFFF' : isDark ? '#A19F9D' : '#605E5C',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              fontFamily: "'Segoe UI', sans-serif",
+              cursor: loadedFiles.length ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Visualize Lineage
+          </button>
+        </div>
+
         <button
-          onClick={() => { setMode('choose'); setUploadStatus({ state: 'idle' }); setParsedFromUpload(null); }}
+          onClick={() => { setMode('choose'); setUploadStatus({ state: 'idle' }); }}
           style={{
             marginTop: '24px',
             padding: '8px 16px',
