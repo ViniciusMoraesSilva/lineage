@@ -41,7 +41,7 @@ const Footer = () => {
           </span>
         </div>
 
-        <div style={{ fontSize: '11px', color: isDark ? '#A19F9D' : '#605E5C', fontFamily: "'Segoe UI', sans-serif" }}>
+        <div data-mainframe-snapshot-hide="true" style={{ fontSize: '11px', color: isDark ? '#A19F9D' : '#605E5C', fontFamily: "'Segoe UI', sans-serif" }}>
           Powered by{' '}
           <a href="https://openlineage.io" target="_blank" rel="noopener noreferrer" style={{ color: '#0078D4', textDecoration: 'none' }}>
             OpenLineage
@@ -56,7 +56,7 @@ const Footer = () => {
           </a>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div data-mainframe-snapshot-hide="true" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <a href="https://openlineage.io/spec/2-0-2/OpenLineage.json" target="_blank" rel="noopener noreferrer" style={linkStyle}>
             Spec
           </a>

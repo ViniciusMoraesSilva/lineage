@@ -61,6 +61,7 @@ const Header = () => {
             Marquito
           </span>
           <span
+            data-mainframe-snapshot-hide="true"
             style={{
               fontSize: '12px',
               color: isDark ? '#A19F9D' : '#605E5C',
@@ -74,6 +75,7 @@ const Header = () => {
 
           <nav style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '16px' }}>
             <Link
+              data-mainframe-snapshot-hide="true"
               href="/"
               style={{
                 display: 'flex',
@@ -96,6 +98,7 @@ const Header = () => {
               OpenLineage
             </Link>
             <Link
+              data-mainframe-snapshot-hide="true"
               href="/fabric-livy"
               style={{
                 display: 'flex',
@@ -146,6 +149,7 @@ const Header = () => {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <a
+            data-mainframe-snapshot-hide="true"
             href="https://openlineage.io"
             target="_blank"
             rel="noopener noreferrer"

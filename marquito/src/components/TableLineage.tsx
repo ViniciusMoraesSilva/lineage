@@ -44,7 +44,9 @@ function DatasetNode({ data }: NodeProps) {
     <div
       style={{
         backgroundColor: isDark ? '#252423' : '#FFFFFF',
-        border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+        borderTop: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+        borderRight: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+        borderBottom: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
         borderLeft: `3px solid ${accentColor}`,
         borderRadius: '6px',
         minWidth: '180px',
@@ -330,7 +332,7 @@ const TableLineage = ({ data }: TableLineageProps) => {
   }, [initialNodes, setNodes]);
 
   return (
-    <section style={{ padding: '0 24px 32px', maxWidth: '1600px', margin: '0 auto' }}>
+    <section data-export-target="table-lineage" style={{ padding: '0 24px 32px', maxWidth: '1600px', margin: '0 auto' }}>
       <div style={{ marginBottom: '16px' }}>
         <h2
           style={{

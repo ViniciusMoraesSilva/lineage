@@ -18,6 +18,8 @@
     "@xyflow/react": "^12.4.4",
     "dagre": "^0.8.5",
     "framer-motion": "^12.34.3",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "next": "15.1.0",
     "react": "^18",

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import JSZip from 'jszip';
+import { toCanvas } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 import { ParsedFieldRule, ParsedLineage } from '@/lib/types';
 import { useThemeContext } from '@/components/ThemeProvider';
 import MainframeBundlePicker from '@/components/MainframeBundlePicker';
@@ -30,7 +31,111 @@ export default function MainframePage() {
   const [loading, setLoading] = useState(false);
   const [selectedField, setSelectedField] = useState<{ datasetKey: string; field: string } | null>(null);
   const [selectedJcl, setSelectedJcl] = useState('');
+  const [exportingPdf, setExportingPdf] = useState(false);
   const { isDark } = useThemeContext();
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+
+    try {
+      const sections = [
+        {
+          key: 'table-lineage',
+          title: 'Table-Level Lineage',
+          element: document.querySelector<HTMLElement>('[data-export-target="table-lineage"]'),
+        },
+        {
+          key: 'column-lineage',
+          title: 'Column-Level Lineage',
+          element: document.querySelector<HTMLElement>('[data-export-target="column-lineage"]'),
+        },
+      ];
+
+      if (sections.some((section) => !section.element)) {
+        throw new Error('Nao foi possivel localizar as secoes de lineage para exportacao em PDF.');
+      }
+
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4', compress: false });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 24;
+      const titleY = 18;
+      const imageTop = 32;
+      const contentWidth = pageWidth - margin * 2;
+      const contentHeight = pageHeight - imageTop - margin;
+      const exportPixelRatio = 1.85;
+      const maxCanvasDimension = 3584;
+      const jpegQuality = 0.92;
+      const isColumnSection = (sectionKey: string) => sectionKey === 'column-lineage';
+      const getSectionPixelRatio = (sectionKey: string) => (isColumnSection(sectionKey) ? exportPixelRatio : 1.7);
+      const getSectionMaxCanvasDimension = (sectionKey: string) => (isColumnSection(sectionKey) ? maxCanvasDimension : 3200);
+      const getSectionCompression = (sectionKey: string) => (isColumnSection(sectionKey) ? 'MEDIUM' : 'FAST');
+      const fileName = `mainframe-lineage-${selectedJcl || 'all'}-${formatLocalDateForFileName(new Date())}.pdf`;
+
+      for (const [index, section] of sections.entries()) {
+        const element = section.element;
+        if (!element) {
+          continue;
+        }
+
+        await new Promise((resolve) => window.requestAnimationFrame(() => resolve(undefined)));
+
+        const sectionPixelRatio = getSectionPixelRatio(section.key);
+        const sectionMaxCanvasDimension = getSectionMaxCanvasDimension(section.key);
+        const sourceWidth = element.scrollWidth || element.clientWidth;
+        const sourceHeight = element.scrollHeight || element.clientHeight;
+        const scaleLimit = Math.min(sectionMaxCanvasDimension / sourceWidth, sectionMaxCanvasDimension / sourceHeight, 1);
+        const canvasScale = scaleLimit < 1 ? scaleLimit : 1;
+
+        const canvas = await toCanvas(element, {
+          cacheBust: false,
+          pixelRatio: sectionPixelRatio,
+          canvasWidth: Math.floor(sourceWidth * canvasScale * sectionPixelRatio),
+          canvasHeight: Math.floor(sourceHeight * canvasScale * sectionPixelRatio),
+          skipFonts: true,
+          backgroundColor: isDark ? '#1B1A19' : '#FFFFFF',
+          style: {
+            transform: `scale(${canvasScale})`,
+            transformOrigin: 'top left',
+            width: `${sourceWidth}px`,
+            height: `${sourceHeight}px`,
+          },
+        });
+
+        const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
+
+        const scale = Math.min(contentWidth / canvas.width, contentHeight / canvas.height);
+        const renderWidth = canvas.width * scale;
+        const renderHeight = canvas.height * scale;
+        const offsetX = margin + (contentWidth - renderWidth) / 2;
+        const offsetY = imageTop + (contentHeight - renderHeight) / 2;
+
+        if (index > 0) {
+          pdf.addPage();
+        }
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(14);
+        pdf.text(section.title, margin, titleY);
+        pdf.addImage(dataUrl, 'JPEG', offsetX, offsetY, renderWidth, renderHeight, undefined, getSectionCompression(section.key));
+      }
+
+      pdf.save(fileName);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Falha ao exportar o PDF de lineage.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setError(null), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [error]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -340,21 +445,22 @@ export default function MainframePage() {
             <button
               type="button"
               onClick={() => {
-                void exportStaticSite(bundles, selectedJcl);
+                void handleExportPdf();
               }}
+              disabled={exportingPdf}
               style={{
                 marginTop: '18px',
                 padding: '10px 12px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: '#0078D4',
+                backgroundColor: exportingPdf ? '#A19F9D' : '#0078D4',
                 color: '#FFFFFF',
-                cursor: 'pointer',
+                cursor: exportingPdf ? 'wait' : 'pointer',
                 fontSize: '12px',
                 fontWeight: 700,
               }}
             >
-              Exportar site estatico
+              {exportingPdf ? 'Exportando PDF...' : 'Exportar PDF de lineage'}
             </button>
             <button
               type="button"
@@ -801,143 +907,9 @@ function dedupeBy<T>(values: T[], keyFn: (value: T) => string): T[] {
   return Array.from(map.values());
 }
 
-async function exportStaticSite(bundles: LoadedBundle[], selectedJcl: string): Promise<void> {
-  const fileName = `mainframe-lineage-site-${selectedJcl || 'all'}-${new Date().toISOString().slice(0, 10)}.zip`;
-  const zip = new JSZip();
-  const exportedPageHtml = await fetch(`${window.location.origin}/mainframe/`).then(async (response) => {
-    if (!response.ok) {
-      throw new Error('Falha ao carregar o HTML estatico da rota /mainframe.');
-    }
-
-    return response.text();
-  });
-
-  const parser = new DOMParser();
-  const exportedDocument = parser.parseFromString(exportedPageHtml, 'text/html');
-  const head = exportedDocument.querySelector('head');
-
-  if (head) {
-    const bootstrapScript = exportedDocument.createElement('script');
-    bootstrapScript.textContent = `
-      window.localStorage.setItem(${JSON.stringify(STORAGE_KEY)}, ${safeJsonForScript(JSON.stringify(bundles))});
-      ${
-        selectedJcl
-          ? `window.localStorage.setItem(${JSON.stringify(SELECTED_JCL_STORAGE_KEY)}, ${JSON.stringify(selectedJcl)});`
-          : `window.localStorage.removeItem(${JSON.stringify(SELECTED_JCL_STORAGE_KEY)});`
-      }
-    `;
-    head.insertBefore(bootstrapScript, head.firstChild);
-  }
-
-  exportedDocument.querySelectorAll('[data-next-badge-root], nextjs-portal').forEach((node) => node.remove());
-
-  const assetUrls = collectAssetUrls(exportedDocument);
-  rewriteDocumentAssetPaths(exportedDocument);
-
-  let html = `<!DOCTYPE html>\n${exportedDocument.documentElement.outerHTML}`;
-  html = rewriteInlineAssetReferences(html);
-
-  zip.file('index.html', html);
-
-  await Promise.all(
-    assetUrls.map(async (assetUrl) => {
-      const response = await fetch(assetUrl);
-      if (!response.ok) {
-        throw new Error(`Falha ao exportar asset: ${assetUrl}`);
-      }
-
-      const assetPath = toZipAssetPath(assetUrl);
-      if (!assetPath) {
-        return;
-      }
-
-      const fileData = await response.arrayBuffer();
-      zip.file(assetPath, fileData);
-    }),
-  );
-
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  window.URL.revokeObjectURL(url);
-}
-
-function collectAssetUrls(root: ParentNode): string[] {
-  const urls = new Set<string>();
-
-  root.querySelectorAll('script[src], link[href], img[src]').forEach((node) => {
-    const element = node as HTMLScriptElement | HTMLLinkElement | HTMLImageElement;
-    const rawUrl = element.getAttribute('src') || element.getAttribute('href');
-    if (!rawUrl) {
-      return;
-    }
-
-    const absoluteUrl = new URL(rawUrl, window.location.href);
-    if (absoluteUrl.origin !== window.location.origin) {
-      return;
-    }
-
-    if (!absoluteUrl.pathname.startsWith('/_next/')) {
-      return;
-    }
-
-    urls.add(absoluteUrl.toString());
-  });
-
-  return Array.from(urls);
-}
-
-function rewriteDocumentAssetPaths(root: ParentNode): void {
-  root.querySelectorAll('script[src], link[href], img[src]').forEach((node) => {
-    const element = node as HTMLScriptElement | HTMLLinkElement | HTMLImageElement;
-    const attrName = element.hasAttribute('src') ? 'src' : 'href';
-    const rawUrl = element.getAttribute(attrName);
-    if (!rawUrl) {
-      return;
-    }
-
-    const absoluteUrl = new URL(rawUrl, window.location.href);
-    if (absoluteUrl.origin !== window.location.origin) {
-      return;
-    }
-
-    const assetPath = toZipAssetPath(absoluteUrl.toString());
-    if (!assetPath) {
-      return;
-    }
-
-    element.setAttribute(attrName, `./${assetPath}`);
-  });
-}
-
-function toZipAssetPath(assetUrl: string): string | null {
-  const parsed = new URL(assetUrl, window.location.href);
-  if (parsed.origin !== window.location.origin) {
-    return null;
-  }
-
-  if (!parsed.pathname.startsWith('/_next/')) {
-    return null;
-  }
-
-  const normalizedPath = parsed.pathname.replace(/^\/+/, '');
-  return normalizedPath || null;
-}
-
-function rewriteInlineAssetReferences(html: string): string {
-  return html
-    .replaceAll('"/_next/', '"./_next/')
-    .replaceAll("'/_next/", "'./_next/");
-}
-
-function safeJsonForScript(value: string): string {
-  return JSON.stringify(value)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
+function formatLocalDateForFileName(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }

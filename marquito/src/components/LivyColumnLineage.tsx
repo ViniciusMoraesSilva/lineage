@@ -42,7 +42,9 @@ function ColumnDatasetNode({ data }: NodeProps) {
     <div
       style={{
         backgroundColor: d.isDark ? '#252423' : '#FFFFFF',
-        border: `1px solid ${d.isDark ? '#484644' : '#EDEBE9'}`,
+        borderTop: `1px solid ${d.isDark ? '#484644' : '#EDEBE9'}`,
+        borderRight: `1px solid ${d.isDark ? '#484644' : '#EDEBE9'}`,
+        borderBottom: `1px solid ${d.isDark ? '#484644' : '#EDEBE9'}`,
         borderLeft: `3px solid ${d.accentColor}`,
         borderRadius: '6px',
         minWidth: '200px',

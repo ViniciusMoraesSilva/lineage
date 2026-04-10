@@ -47,7 +47,9 @@ function ColumnDatasetNode({ data }: NodeProps) {
     <div
       style={{
         backgroundColor: isDark ? '#252423' : '#FFFFFF',
-        border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+        borderTop: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+        borderRight: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+        borderBottom: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
         borderLeft: `3px solid ${nodeData.accentColor}`,
         borderRadius: '6px',
         minWidth: '200px',
@@ -563,7 +565,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
   }, [finalEdges]);
 
   return (
-    <section style={{ padding: '0 24px 32px', maxWidth: '1600px', margin: '0 auto' }}>
+    <section data-export-target="column-lineage" style={{ padding: '0 24px 32px', maxWidth: '1600px', margin: '0 auto' }}>
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
           <h2
