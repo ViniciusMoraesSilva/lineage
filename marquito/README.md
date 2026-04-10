@@ -23,3 +23,7 @@
 Little [Marquez](https://marquezproject.ai/).
 
 ![Marquito](.imgs/marquito.gif)
+
+
+ cd "/Users/macbookpro/Documents/git/mainframelineage/marquito/out"                                                       
+python3 -m http.server 28081    
