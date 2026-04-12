@@ -157,9 +157,9 @@ function ColumnDatasetNode({ data }: NodeProps) {
                     ? 'transparent'
                     : isMatched
                       ? isDark ? 'rgba(216,59,1,0.20)' : 'rgba(216,59,1,0.12)'
-                    : isHighlighted
-                      ? isDark ? 'rgba(0,120,212,0.15)' : 'rgba(0,120,212,0.08)'
-                      : 'transparent',
+                      : isHighlighted
+                        ? isDark ? 'rgba(0,120,212,0.15)' : 'rgba(0,120,212,0.08)'
+                        : 'transparent',
                 position: 'relative',
                 transition: 'background-color 0.15s, color 0.15s',
                 borderRadius: isSelected ? '3px' : '0',
@@ -511,7 +511,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           hasSelection: false,
           isDark,
           accentColor: roleColors[ds.role] || '#0078D4',
-          onColumnClick: () => {},
+          onColumnClick: () => { },
           datasetKey: key,
         },
       });
