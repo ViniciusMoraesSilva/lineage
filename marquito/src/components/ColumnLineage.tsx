@@ -108,15 +108,15 @@ function ColumnDatasetNode({ data }: NodeProps) {
             marginLeft: 'auto',
             background: 'transparent',
             border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
-            borderRadius: '3px',
+            borderRadius: '4px',
             cursor: 'pointer',
-            padding: '2px 6px',
-            fontSize: '10px',
+            padding: '4px 10px',
+            fontSize: '12px',
             fontWeight: 600,
             color: nodeData.selectedColumns.length === nodeData.columns.length && nodeData.columns.length > 0
               ? '#0078D4'
               : isDark ? '#A19F9D' : '#605E5C',
-            lineHeight: 1,
+            lineHeight: 1.2,
             flexShrink: 0,
           }}
         >

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toCanvas } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { ParsedFieldRule, ParsedLineage } from '@/lib/types';
@@ -9,6 +9,7 @@ import MainframeBundlePicker from '@/components/MainframeBundlePicker';
 import TableLineage from '@/components/TableLineage';
 import ColumnLineage from '@/components/ColumnLineage';
 import { formatRawTransformation } from '@/lib/mainframe/transformationCatalog';
+import { loadBundles, saveBundles, clearBundles, StoredBundle } from '@/lib/mainframe/bundleStorage';
 
 interface LoadedBundle {
   id: string;
@@ -22,7 +23,6 @@ interface ResolvedFieldRule extends ParsedFieldRule {
   upstreamDistance: number;
 }
 
-const STORAGE_KEY = 'mainframe-lineage-loaded-bundles-v1';
 const SELECTED_JCL_STORAGE_KEY = 'mainframe-lineage-selected-jcl-v1';
 
 export default function MainframePage() {
@@ -142,41 +142,48 @@ export default function MainframePage() {
       return;
     }
 
-    try {
-      const rawValue = window.localStorage.getItem(STORAGE_KEY);
-      const rawSelectedJcl = window.localStorage.getItem(SELECTED_JCL_STORAGE_KEY);
-
-      if (rawValue) {
-        const parsedBundles = JSON.parse(rawValue) as LoadedBundle[];
-        if (Array.isArray(parsedBundles)) {
-          setBundles(parsedBundles);
-        }
-      }
-
-      if (rawSelectedJcl) {
-        setSelectedJcl(rawSelectedJcl);
-      }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-      window.localStorage.removeItem(SELECTED_JCL_STORAGE_KEY);
+    const rawSelectedJcl = window.localStorage.getItem(SELECTED_JCL_STORAGE_KEY);
+    if (rawSelectedJcl) {
+      setSelectedJcl(rawSelectedJcl);
     }
+
+    loadBundles()
+      .then((stored) => {
+        if (stored.length) {
+          setBundles(stored as LoadedBundle[]);
+        }
+      })
+      .catch(() => {
+        // IndexedDB unavailable — start with empty bundles
+      });
   }, []);
 
+  const bundlesSaveScheduled = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
 
     if (!bundles.length) {
-      window.localStorage.removeItem(STORAGE_KEY);
+      clearBundles().catch(() => {});
       return;
     }
 
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(bundles));
-    } catch {
-      // localStorage quota exceeded — silently skip persistence
-    }
+    if (bundlesSaveScheduled.current) return;
+    bundlesSaveScheduled.current = true;
+
+    // Debounce writes — wait 500ms after last change to avoid thrashing IndexedDB
+    const timeoutId = window.setTimeout(() => {
+      bundlesSaveScheduled.current = false;
+      saveBundles(bundles as StoredBundle[]).catch(() => {
+        // IndexedDB write failed — data is still in memory, just not persisted
+      });
+    }, 500);
+
+    return () => {
+      bundlesSaveScheduled.current = false;
+      window.clearTimeout(timeoutId);
+    };
   }, [bundles]);
 
   useEffect(() => {
