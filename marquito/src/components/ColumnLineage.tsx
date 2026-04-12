@@ -40,6 +40,8 @@ function ColumnDatasetNode({ data }: NodeProps) {
     accentColor: string;
     onColumnClick: (datasetKey: string, column: string) => void;
     onSelectAll: (datasetKey: string, columns: string[]) => void;
+    onFilterColumn: (columnName: string) => void;
+    onFilterAll: (columns: string[]) => void;
     datasetKey: string;
   };
   const { isDark, hasSelection, hasFilter } = nodeData;
@@ -122,6 +124,28 @@ function ColumnDatasetNode({ data }: NodeProps) {
         >
           {nodeData.selectedColumns.length === nodeData.columns.length && nodeData.columns.length > 0 ? '✓ All' : '☐ All'}
         </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            nodeData.onFilterAll(nodeData.columns);
+          }}
+          title="Rastrear linhagem de todas as colunas"
+          style={{
+            background: 'transparent',
+            border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+            borderRadius: '4px',
+            cursor: 'pointer',
+            padding: '4px 10px',
+            fontSize: '12px',
+            fontWeight: 600,
+            color: isDark ? '#A19F9D' : '#605E5C',
+            lineHeight: 1.2,
+            flexShrink: 0,
+            marginLeft: '4px',
+          }}
+        >
+          ⛶ All
+        </button>
       </div>
       <div style={{ padding: '4px 0' }}>
         {nodeData.columns.map((col) => {
@@ -177,7 +201,27 @@ function ColumnDatasetNode({ data }: NodeProps) {
                   left: -3,
                 }}
               />
-              <span style={{ marginLeft: '4px' }}>{col}</span>
+              <span style={{ marginLeft: '4px', flex: 1 }}>{col}</span>
+              <button
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  nodeData.onFilterColumn(col);
+                }}
+                title="Rastrear linhagem desta coluna"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0 2px',
+                  fontSize: '10px',
+                  lineHeight: 1,
+                  color: isSelected ? '#FFFFFF' : isDark ? '#605E5C' : '#A19F9D',
+                  opacity: 0.7,
+                  flexShrink: 0,
+                }}
+              >
+                ⛶
+              </button>
               <Handle
                 type="source"
                 position={Position.Right}
@@ -569,6 +613,25 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     });
   }, []);
 
+  const handleFilterColumn = useCallback((columnName: string) => {
+    setColumnNameFilters((prev) => {
+      const lower = columnName.toLowerCase();
+      if (prev.some((f) => f.toLowerCase() === lower)) return prev;
+      return [...prev, columnName];
+    });
+    setColumnNameInput('');
+  }, []);
+
+  const handleFilterAll = useCallback((columns: string[]) => {
+    setColumnNameFilters((prev) => {
+      const existing = new Set(prev.map((f) => f.toLowerCase()));
+      const newTerms = columns.filter((col) => !existing.has(col.toLowerCase()));
+      if (newTerms.length === 0) return prev;
+      return [...prev, ...newTerms];
+    });
+    setColumnNameInput('');
+  }, []);
+
   const handlePaneClick = useCallback(() => {
     setSelectedColumns([]);
   }, []);
@@ -612,6 +675,8 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           hasFilter: Boolean(normalizedFilter),
           onColumnClick: handleColumnClick,
           onSelectAll: handleSelectAll,
+          onFilterColumn: handleFilterColumn,
+          onFilterAll: handleFilterAll,
           datasetKey: node.id,
         },
       };

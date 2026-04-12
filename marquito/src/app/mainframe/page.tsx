@@ -165,7 +165,7 @@ export default function MainframePage() {
     }
 
     if (!bundles.length) {
-      clearBundles().catch(() => {});
+      clearBundles().catch(() => { });
       return;
     }
 
