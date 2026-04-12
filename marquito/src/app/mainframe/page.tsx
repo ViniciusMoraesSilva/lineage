@@ -29,7 +29,7 @@ export default function MainframePage() {
   const [bundles, setBundles] = useState<LoadedBundle[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedField, setSelectedField] = useState<{ datasetKey: string; field: string } | null>(null);
+  const [selectedFields, setSelectedFields] = useState<Array<{ datasetKey: string; field: string }>>([]);
   const [selectedJcl, setSelectedJcl] = useState('');
   const [exportingPdf, setExportingPdf] = useState(false);
   const { isDark } = useThemeContext();
@@ -263,20 +263,22 @@ export default function MainframePage() {
   }, [data, selectedJcl]);
 
   useEffect(() => {
-    if (!filteredData || !selectedField) {
+    if (!filteredData || selectedFields.length === 0) {
       return;
     }
 
-    const fieldExists = filteredData.datasets.some(
-      (dataset) =>
-        `${dataset.namespace}::${dataset.name}` === selectedField.datasetKey &&
-        dataset.schema.some((field) => field.name === selectedField.field),
+    const validFields = selectedFields.filter((sf) =>
+      filteredData.datasets.some(
+        (dataset) =>
+          `${dataset.namespace}::${dataset.name}` === sf.datasetKey &&
+          dataset.schema.some((field) => field.name === sf.field),
+      ),
     );
 
-    if (!fieldExists) {
-      setSelectedField(null);
+    if (validFields.length !== selectedFields.length) {
+      setSelectedFields(validFields);
     }
-  }, [filteredData, selectedField]);
+  }, [filteredData, selectedFields]);
 
   if (loading) {
     return (
@@ -296,7 +298,7 @@ export default function MainframePage() {
           onClick: () => {
             setError(null);
             setBundles([]);
-            setSelectedField(null);
+            setSelectedFields([]);
             setSelectedJcl('');
           },
         }}
@@ -309,7 +311,7 @@ export default function MainframePage() {
       <MainframeBundlePicker
         onDataLoaded={(nextBundles) => {
           setBundles(nextBundles.map(createLoadedBundle));
-          setSelectedField(null);
+          setSelectedFields([]);
           setSelectedJcl('');
         }}
         onError={setError}
@@ -392,7 +394,7 @@ export default function MainframePage() {
                     type="button"
                     onClick={() => {
                       setBundles((current) => current.filter((item) => item.id !== bundle.id));
-                      setSelectedField(null);
+                      setSelectedFields([]);
                       setSelectedJcl((current) => (current === bundle.label ? '' : current));
                     }}
                     title={`Remover ${bundle.label}`}
@@ -481,7 +483,7 @@ export default function MainframePage() {
               type="button"
               onClick={() => {
                 setBundles([]);
-                setSelectedField(null);
+                setSelectedFields([]);
                 setSelectedJcl('');
               }}
               style={{
@@ -511,11 +513,11 @@ export default function MainframePage() {
       </section>
 
       <TableLineage data={filteredData} />
-      <ColumnLineage data={filteredData} onSelectionChange={setSelectedField} />
+      <ColumnLineage data={filteredData} onSelectionChange={setSelectedFields} />
       <MainframeRulePanel
         isDark={isDark}
-        selectedField={selectedField}
-        rules={resolveFieldRules(filteredData, selectedField)}
+        selectedFields={selectedFields}
+        rulesByField={resolveMultiFieldRules(filteredData, selectedFields)}
       />
     </div>
   );
@@ -595,6 +597,25 @@ function resolveFieldRules(
   });
 }
 
+interface FieldRuleGroup {
+  field: { datasetKey: string; field: string };
+  rules: ResolvedFieldRule[];
+}
+
+function resolveMultiFieldRules(
+  data: ParsedLineage,
+  selectedFields: Array<{ datasetKey: string; field: string }>,
+): FieldRuleGroup[] {
+  if (!selectedFields.length || !data.fieldRules) {
+    return [];
+  }
+
+  return selectedFields.map((sf) => ({
+    field: sf,
+    rules: resolveFieldRules(data, sf),
+  })).filter((group) => group.rules.length > 0);
+}
+
 function formatFieldKey(fieldKey: string): string {
   const parts = fieldKey.split('::');
   if (parts.length < 3) {
@@ -606,12 +627,12 @@ function formatFieldKey(fieldKey: string): string {
 
 function MainframeRulePanel({
   isDark,
-  selectedField,
-  rules,
+  selectedFields,
+  rulesByField,
 }: {
   isDark: boolean;
-  selectedField: { datasetKey: string; field: string } | null;
-  rules: ResolvedFieldRule[];
+  selectedFields: Array<{ datasetKey: string; field: string }>;
+  rulesByField: FieldRuleGroup[];
 }) {
   return (
     <section style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 24px 32px' }}>
@@ -628,81 +649,127 @@ function MainframeRulePanel({
             Regras do campo
           </h2>
           <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C' }}>
-            {selectedField ? `${selectedField.datasetKey} :: ${selectedField.field}` : 'Nenhum campo selecionado'}
+            {selectedFields.length > 0
+              ? `${selectedFields.length} campo${selectedFields.length > 1 ? 's' : ''} selecionado${selectedFields.length > 1 ? 's' : ''}`
+              : 'Nenhum campo selecionado'}
           </div>
         </div>
 
-        {!selectedField ? (
+        {selectedFields.length === 0 ? (
           <div style={{ fontSize: '14px', color: isDark ? '#A19F9D' : '#605E5C' }}>
             Clique em um campo no Column-Level Lineage para ver as regras associadas.
           </div>
-        ) : !rules.length ? (
+        ) : rulesByField.length === 0 ? (
           <div style={{ fontSize: '14px', color: isDark ? '#A19F9D' : '#605E5C' }}>
-            Este campo nao possui regras explicitas nem regras herdadas pelo lineage upstream.
+            {selectedFields.length === 1
+              ? 'Este campo nao possui regras explicitas nem regras herdadas pelo lineage upstream.'
+              : 'Nenhum dos campos selecionados possui regras explicitas ou herdadas.'}
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: '12px', marginTop: '14px' }}>
-            {rules.map((rule) => (
-              <article
-                key={`${rule.ruleId}-${rule.stepId}`}
-                style={{
-                  border: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
-                  borderRadius: '8px',
-                  padding: '14px 16px',
-                  backgroundColor: isDark ? '#201F1E' : '#FAF9F8',
-                }}
-              >
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-                  <RuleBadge isDark={isDark} label={rule.ruleId} strong />
-                  <RuleBadge isDark={isDark} label={rule.stepId || 'UNKNOWN'} />
-                  {rule.standardTransformationLabel ? <RuleBadge isDark={isDark} label={rule.standardTransformationLabel} accent /> : null}
-                  <RuleBadge isDark={isDark} label={formatRawTransformation(rule.ruleType, rule.ruleSubtype)} />
-                  {rule.stepName ? <RuleBadge isDark={isDark} label={rule.stepName} /> : null}
-                  {rule.programName ? <RuleBadge isDark={isDark} label={rule.programName} /> : null}
-                  {rule.inherited ? <RuleBadge isDark={isDark} label={`Herdada (${rule.upstreamDistance})`} accent /> : null}
+          <div style={{ display: 'grid', gap: '20px', marginTop: '14px' }}>
+            {rulesByField.map((group) => (
+              <div key={`${group.field.datasetKey}::${group.field.field}`}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '10px',
+                    paddingBottom: '8px',
+                    borderBottom: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
+                  }}
+                >
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    color: isDark ? '#FAF9F8' : '#323130',
+                  }}>
+                    {group.field.field}
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    color: isDark ? '#A19F9D' : '#605E5C',
+                    fontFamily: 'monospace',
+                  }}>
+                    {group.field.datasetKey}
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    backgroundColor: 'rgba(0,120,212,0.12)',
+                    color: '#0078D4',
+                    fontWeight: 600,
+                    marginLeft: 'auto',
+                  }}>
+                    {group.rules.length} regra{group.rules.length > 1 ? 's' : ''}
+                  </span>
                 </div>
-                {rule.inherited ? (
-                  <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C', marginBottom: '8px' }}>
-                    Origem upstream: {formatFieldKey(rule.originFieldKey)}
-                  </div>
-                ) : null}
-                <div style={{ fontSize: '13px', color: isDark ? '#FAF9F8' : '#323130', fontFamily: 'monospace', marginBottom: '8px' }}>
-                  {rule.expression || 'Sem expressao'}
-                </div>
-                <div style={{ fontSize: '13px', color: isDark ? '#A19F9D' : '#605E5C', lineHeight: '1.6' }}>
-                  {rule.description || 'Sem descricao'}
-                </div>
-                {rule.evidence?.length ? (
-                  <div style={{ display: 'grid', gap: '8px', marginTop: '12px' }}>
-                    {rule.evidence.map((item) => (
-                      <div
-                        key={item.evidenceId}
-                        style={{
-                          borderTop: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
-                          paddingTop: '10px',
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                          <RuleBadge isDark={isDark} label={item.relatedType} />
-                          <RuleBadge isDark={isDark} label={item.confidence || 'unknown'} />
-                          {item.artifact?.name ? <RuleBadge isDark={isDark} label={item.artifact.name} accent /> : null}
-                        </div>
-                        <div style={{ fontSize: '12px', color: isDark ? '#FAF9F8' : '#323130', fontFamily: 'monospace', marginBottom: '6px' }}>
-                          {item.location}
-                        </div>
-                        <div style={{ fontSize: '13px', color: isDark ? '#A19F9D' : '#605E5C', lineHeight: '1.6' }}>
-                          {item.excerpt}
-                        </div>
-                        {item.artifact ? (
-                          <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C', lineHeight: '1.6', marginTop: '6px' }}>
-                            {item.artifact.artifactType} • {item.artifact.path}
-                          </div>
-                        ) : null}
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {group.rules.map((rule) => (
+                    <article
+                      key={`${rule.ruleId}-${rule.stepId}`}
+                      style={{
+                        border: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
+                        borderRadius: '8px',
+                        padding: '14px 16px',
+                        backgroundColor: isDark ? '#201F1E' : '#FAF9F8',
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                        <RuleBadge isDark={isDark} label={rule.ruleId} strong />
+                        <RuleBadge isDark={isDark} label={rule.stepId || 'UNKNOWN'} />
+                        {rule.standardTransformationLabel ? <RuleBadge isDark={isDark} label={rule.standardTransformationLabel} accent /> : null}
+                        <RuleBadge isDark={isDark} label={formatRawTransformation(rule.ruleType, rule.ruleSubtype)} />
+                        {rule.stepName ? <RuleBadge isDark={isDark} label={rule.stepName} /> : null}
+                        {rule.programName ? <RuleBadge isDark={isDark} label={rule.programName} /> : null}
+                        {rule.inherited ? <RuleBadge isDark={isDark} label={`Herdada (${rule.upstreamDistance})`} accent /> : null}
                       </div>
-                    ))}
-                  </div>
-                ) : null}
-              </article>
+                      {rule.inherited ? (
+                        <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C', marginBottom: '8px' }}>
+                          Origem upstream: {formatFieldKey(rule.originFieldKey)}
+                        </div>
+                      ) : null}
+                      <div style={{ fontSize: '13px', color: isDark ? '#FAF9F8' : '#323130', fontFamily: 'monospace', marginBottom: '8px' }}>
+                        {rule.expression || 'Sem expressao'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: isDark ? '#A19F9D' : '#605E5C', lineHeight: '1.6' }}>
+                        {rule.description || 'Sem descricao'}
+                      </div>
+                      {rule.evidence?.length ? (
+                        <div style={{ display: 'grid', gap: '8px', marginTop: '12px' }}>
+                          {rule.evidence.map((item) => (
+                            <div
+                              key={item.evidenceId}
+                              style={{
+                                borderTop: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
+                                paddingTop: '10px',
+                              }}
+                            >
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                                <RuleBadge isDark={isDark} label={item.relatedType} />
+                                <RuleBadge isDark={isDark} label={item.confidence || 'unknown'} />
+                                {item.artifact?.name ? <RuleBadge isDark={isDark} label={item.artifact.name} accent /> : null}
+                              </div>
+                              <div style={{ fontSize: '12px', color: isDark ? '#FAF9F8' : '#323130', fontFamily: 'monospace', marginBottom: '6px' }}>
+                                {item.location}
+                              </div>
+                              <div style={{ fontSize: '13px', color: isDark ? '#A19F9D' : '#605E5C', lineHeight: '1.6' }}>
+                                {item.excerpt}
+                              </div>
+                              {item.artifact ? (
+                                <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C', lineHeight: '1.6', marginTop: '6px' }}>
+                                  {item.artifact.artifactType} • {item.artifact.path}
+                                </div>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

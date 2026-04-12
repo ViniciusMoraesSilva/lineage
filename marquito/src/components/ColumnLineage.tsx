@@ -21,7 +21,7 @@ import { ParsedLineage, ColumnLineageEdge, ParsedDataset } from '@/lib/types';
 
 interface ColumnLineageProps {
   data: ParsedLineage;
-  onSelectionChange?: (selection: { datasetKey: string; field: string } | null) => void;
+  onSelectionChange?: (selection: Array<{ datasetKey: string; field: string }>) => void;
 }
 
 // Custom node: a dataset "card" with columns listed inside
@@ -486,8 +486,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
   }, [activeEdges, activeAdjMap, columnNameFilters, deferredColumnNameInput]);
 
   useEffect(() => {
-    const last = selectedColumns.length > 0 ? selectedColumns[selectedColumns.length - 1] : null;
-    onSelectionChange?.(last);
+    onSelectionChange?.(selectedColumns);
   }, [selectedColumns, onSelectionChange]);
 
   useEffect(() => {
