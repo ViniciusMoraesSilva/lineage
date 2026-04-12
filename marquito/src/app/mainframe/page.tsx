@@ -172,7 +172,11 @@ export default function MainframePage() {
       return;
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(bundles));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(bundles));
+    } catch {
+      // localStorage quota exceeded — silently skip persistence
+    }
   }, [bundles]);
 
   useEffect(() => {
@@ -193,7 +197,11 @@ export default function MainframePage() {
       return null;
     }
 
-    return bundles.reduce((acc, bundle) => (acc ? mergeParsedLineage(acc, bundle.data) : bundle.data), null as ParsedLineage | null);
+    if (bundles.length === 1) {
+      return bundles[0].data;
+    }
+
+    return mergeAllBundles(bundles.map((b) => b.data));
   }, [bundles]);
 
   const filteredData = useMemo(() => {
@@ -794,63 +802,76 @@ function SummaryPill({ label, value }: { label: string; value: string }) {
 }
 
 function mergeParsedLineage(current: ParsedLineage, incoming: ParsedLineage): ParsedLineage {
-  const datasetsByKey = new Map(current.datasets.map((dataset) => [`${dataset.namespace}::${dataset.name}`, dataset]));
-  const jobsByKey = new Map(current.jobs.map((job) => [job.name, job]));
-  const tableEdgesByKey = new Map(current.tableLineageEdges.map((edge) => [`${edge.source}->${edge.target}`, edge]));
-  const columnEdgesByKey = new Map(
-    current.columnLineageEdges.map((edge) => [
-      `${edge.sourceDataset}::${edge.sourceField}->${edge.targetDataset}::${edge.targetField}::${edge.transformationType}::${edge.transformationSubtype}`,
-      edge,
-    ]),
-  );
-  const artifactsByKey = new Map((current.artifacts || []).map((artifact) => [artifact.artifactId, artifact]));
-  const fieldRules = { ...(current.fieldRules || {}) } as NonNullable<ParsedLineage['fieldRules']>;
+  return mergeAllBundles([current, incoming]);
+}
 
-  for (const dataset of incoming.datasets) {
-    const key = `${dataset.namespace}::${dataset.name}`;
-    const existing = datasetsByKey.get(key);
-    if (!existing) {
-      datasetsByKey.set(key, dataset);
-      continue;
+// Single-pass merge: builds maps once and inserts all bundles — O(N × D) total instead of O(N² × D)
+function mergeAllBundles(all: ParsedLineage[]): ParsedLineage {
+  if (all.length === 0) throw new Error('mergeAllBundles: empty input');
+  if (all.length === 1) return all[0];
+
+  const datasetsByKey = new Map<string, ParsedLineage['datasets'][number]>();
+  const jobsByKey = new Map<string, ParsedLineage['jobs'][number]>();
+  const tableEdgesByKey = new Map<string, ParsedLineage['tableLineageEdges'][number]>();
+  const columnEdgesByKey = new Map<string, ParsedLineage['columnLineageEdges'][number]>();
+  const artifactsByKey = new Map<string, NonNullable<ParsedLineage['artifacts']>[number]>();
+  const fieldRules: NonNullable<ParsedLineage['fieldRules']> = {};
+  const allEvents: ParsedLineage['events'] = [];
+  const allJclNames: string[] = [];
+  let totalEvents = 0;
+  let startEvents = 0;
+  let completeEvents = 0;
+
+  for (const lineage of all) {
+    allEvents.push(...lineage.events);
+    totalEvents += lineage.stats.totalEvents;
+    startEvents += lineage.stats.startEvents;
+    completeEvents += lineage.stats.completeEvents;
+    if (lineage.jclNames) allJclNames.push(...lineage.jclNames);
+
+    for (const dataset of lineage.datasets) {
+      const key = `${dataset.namespace}::${dataset.name}`;
+      const existing = datasetsByKey.get(key);
+      if (!existing) {
+        datasetsByKey.set(key, dataset);
+      } else {
+        datasetsByKey.set(key, {
+          ...existing,
+          ...dataset,
+          schema: dedupeBy([...existing.schema, ...dataset.schema], (f) => f.name)
+            .sort((a, b) => a.name.localeCompare(b.name)),
+          relatedSteps: dedupeStrings([...(existing.relatedSteps || []), ...(dataset.relatedSteps || [])]),
+          relatedPrograms: dedupeStrings([...(existing.relatedPrograms || []), ...(dataset.relatedPrograms || [])]),
+          jclNames: dedupeStrings([...(existing.jclNames || []), ...(dataset.jclNames || [])]),
+        });
+      }
     }
 
-    datasetsByKey.set(key, {
-      ...existing,
-      ...dataset,
-      schema: dedupeBy(
-        [...existing.schema, ...dataset.schema],
-        (field) => field.name,
-      ).sort((left, right) => left.name.localeCompare(right.name)),
-      relatedSteps: dedupeStrings([...(existing.relatedSteps || []), ...(dataset.relatedSteps || [])]),
-      relatedPrograms: dedupeStrings([...(existing.relatedPrograms || []), ...(dataset.relatedPrograms || [])]),
-      jclNames: dedupeStrings([...(existing.jclNames || []), ...(dataset.jclNames || [])]),
-    });
-  }
+    for (const job of lineage.jobs) {
+      jobsByKey.set(job.name, { ...jobsByKey.get(job.name), ...job });
+    }
 
-  for (const job of incoming.jobs) {
-    jobsByKey.set(job.name, { ...jobsByKey.get(job.name), ...job });
-  }
+    for (const edge of lineage.tableLineageEdges) {
+      tableEdgesByKey.set(`${edge.source}->${edge.target}`, edge);
+    }
 
-  for (const edge of incoming.tableLineageEdges) {
-    tableEdgesByKey.set(`${edge.source}->${edge.target}`, edge);
-  }
+    for (const edge of lineage.columnLineageEdges) {
+      columnEdgesByKey.set(
+        `${edge.sourceDataset}::${edge.sourceField}->${edge.targetDataset}::${edge.targetField}::${edge.transformationType}::${edge.transformationSubtype}`,
+        edge,
+      );
+    }
 
-  for (const edge of incoming.columnLineageEdges) {
-    columnEdgesByKey.set(
-      `${edge.sourceDataset}::${edge.sourceField}->${edge.targetDataset}::${edge.targetField}::${edge.transformationType}::${edge.transformationSubtype}`,
-      edge,
-    );
-  }
+    for (const artifact of lineage.artifacts || []) {
+      artifactsByKey.set(artifact.artifactId, artifact);
+    }
 
-  for (const artifact of incoming.artifacts || []) {
-    artifactsByKey.set(artifact.artifactId, artifact);
-  }
-
-  for (const [fieldKey, rules] of Object.entries(incoming.fieldRules || {})) {
-    fieldRules[fieldKey] = dedupeBy(
-      [...(fieldRules[fieldKey] || []), ...rules],
-      (rule) => `${rule.ruleId}::${rule.stepId}::${rule.expression}`,
-    );
+    for (const [fieldKey, rules] of Object.entries(lineage.fieldRules || {})) {
+      fieldRules[fieldKey] = dedupeBy(
+        [...(fieldRules[fieldKey] || []), ...rules],
+        (rule) => `${rule.ruleId}::${rule.stepId}::${rule.expression}`,
+      );
+    }
   }
 
   const datasets = Array.from(datasetsByKey.values());
@@ -858,11 +879,11 @@ function mergeParsedLineage(current: ParsedLineage, incoming: ParsedLineage): Pa
   const tableLineageEdges = Array.from(tableEdgesByKey.values());
   const columnLineageEdges = Array.from(columnEdgesByKey.values());
   const artifacts = Array.from(artifactsByKey.values());
-  const jclNames = dedupeStrings([...(current.jclNames || []), ...(incoming.jclNames || [])]);
+  const jclNames = dedupeStrings(allJclNames);
 
   return {
-    ...current,
-    events: [...current.events, ...incoming.events],
+    ...all[0],
+    events: allEvents,
     datasets,
     jobs,
     tableLineageEdges,
@@ -871,12 +892,12 @@ function mergeParsedLineage(current: ParsedLineage, incoming: ParsedLineage): Pa
     artifacts,
     jclNames,
     stats: {
-      totalEvents: current.stats.totalEvents + incoming.stats.totalEvents,
+      totalEvents,
       totalJobs: jobs.length,
       totalDatasets: datasets.length,
       columnLineageCount: columnLineageEdges.length,
-      startEvents: current.stats.startEvents + incoming.stats.startEvents,
-      completeEvents: current.stats.completeEvents + incoming.stats.completeEvents,
+      startEvents,
+      completeEvents,
     },
   };
 }

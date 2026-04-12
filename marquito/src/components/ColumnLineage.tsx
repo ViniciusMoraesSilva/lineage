@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useDeferredValue } from 'react';
 import {
   ReactFlow,
   Background,
@@ -39,6 +39,7 @@ function ColumnDatasetNode({ data }: NodeProps) {
     isDark: boolean;
     accentColor: string;
     onColumnClick: (datasetKey: string, column: string) => void;
+    onSelectAll: (datasetKey: string, columns: string[]) => void;
     datasetKey: string;
   };
   const { isDark, hasSelection, hasFilter } = nodeData;
@@ -97,6 +98,30 @@ function ColumnDatasetNode({ data }: NodeProps) {
             </div>
           ) : null}
         </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            nodeData.onSelectAll(nodeData.datasetKey, nodeData.columns);
+          }}
+          title={nodeData.selectedColumns.length === nodeData.columns.length && nodeData.columns.length > 0 ? 'Desmarcar todos' : 'Selecionar todos'}
+          style={{
+            marginLeft: 'auto',
+            background: 'transparent',
+            border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+            borderRadius: '3px',
+            cursor: 'pointer',
+            padding: '2px 6px',
+            fontSize: '10px',
+            fontWeight: 600,
+            color: nodeData.selectedColumns.length === nodeData.columns.length && nodeData.columns.length > 0
+              ? '#0078D4'
+              : isDark ? '#A19F9D' : '#605E5C',
+            lineHeight: 1,
+            flexShrink: 0,
+          }}
+        >
+          {nodeData.selectedColumns.length === nodeData.columns.length && nodeData.columns.length > 0 ? '✓ All' : '☐ All'}
+        </button>
       </div>
       <div style={{ padding: '4px 0' }}>
         {nodeData.columns.map((col) => {
@@ -178,12 +203,19 @@ const nodeTypes = { columnDataset: ColumnDatasetNode };
 function getLayoutedElements(nodes: Node[], edges: Edge[]) {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'LR', nodesep: 80, ranksep: 200 });
 
+  const nodeHeights: number[] = [];
   nodes.forEach((node) => {
     const subtitle = ((node.data.subtitle as string | undefined) || '').trim();
-    g.setNode(node.id, { width: 260, height: (node.data.columns as string[]).length * 24 + (subtitle ? 72 : 50) });
+    const height = (node.data.columns as string[]).length * 24 + (subtitle ? 72 : 50);
+    nodeHeights.push(height);
+    g.setNode(node.id, { width: 260, height });
   });
+
+  const maxHeight = nodeHeights.length > 0 ? Math.max(...nodeHeights) : 50;
+  const nodesep = Math.max(80, Math.min(maxHeight * 0.15, 300));
+
+  g.setGraph({ rankdir: 'LR', nodesep, ranksep: 200 });
   edges.forEach((edge) => {
     g.setEdge(edge.source, edge.target);
   });
@@ -201,11 +233,35 @@ function getLayoutedElements(nodes: Node[], edges: Edge[]) {
   };
 }
 
-// Trace all upstream ancestors of a column through the lineage edges
+// Build adjacency maps for O(1) neighbor lookup during BFS
+function buildAdjacencyMaps(edges: ColumnLineageEdge[]) {
+  // upstream: target → sources (for tracing backwards)
+  const upstreamMap = new Map<string, string[]>();
+  // downstream: source → targets (for tracing forwards)
+  const downstreamMap = new Map<string, string[]>();
+
+  for (const edge of edges) {
+    const srcKey = `${edge.sourceDataset}::${edge.sourceField}`;
+    const tgtKey = `${edge.targetDataset}::${edge.targetField}`;
+
+    const existing = upstreamMap.get(tgtKey);
+    if (existing) existing.push(srcKey);
+    else upstreamMap.set(tgtKey, [srcKey]);
+
+    const existingDown = downstreamMap.get(srcKey);
+    if (existingDown) existingDown.push(tgtKey);
+    else downstreamMap.set(srcKey, [tgtKey]);
+  }
+
+  return { upstreamMap, downstreamMap };
+}
+
+// Trace all upstream ancestors of a column using adjacency map
 function traceUpstream(
   datasetKey: string,
   field: string,
-  edges: ColumnLineageEdge[]
+  _edges: ColumnLineageEdge[],
+  adjMap?: { upstreamMap: Map<string, string[]> },
 ): Set<string> {
   const visited = new Set<string>();
   const queue = [`${datasetKey}::${field}`];
@@ -215,15 +271,20 @@ function traceUpstream(
     if (visited.has(current)) continue;
     visited.add(current);
 
-    const [ds1, ds2, col] = splitColumnKey(current);
-    const dsKey = `${ds1}::${ds2}`;
-
-    // Find all edges where this column is a target → trace back to sources
-    for (const edge of edges) {
-      if (edge.targetDataset === dsKey && edge.targetField === col) {
-        const srcKey = `${edge.sourceDataset}::${edge.sourceField}`;
-        if (!visited.has(srcKey)) {
-          queue.push(srcKey);
+    if (adjMap) {
+      const sources = adjMap.upstreamMap.get(current);
+      if (sources) {
+        for (const src of sources) {
+          if (!visited.has(src)) queue.push(src);
+        }
+      }
+    } else {
+      const [ds1, ds2, col] = splitColumnKey(current);
+      const dsKey = `${ds1}::${ds2}`;
+      for (const edge of _edges) {
+        if (edge.targetDataset === dsKey && edge.targetField === col) {
+          const srcKey = `${edge.sourceDataset}::${edge.sourceField}`;
+          if (!visited.has(srcKey)) queue.push(srcKey);
         }
       }
     }
@@ -232,11 +293,12 @@ function traceUpstream(
   return visited;
 }
 
-// Also trace downstream from a column
+// Trace all downstream descendants using adjacency map
 function traceDownstream(
   datasetKey: string,
   field: string,
-  edges: ColumnLineageEdge[]
+  _edges: ColumnLineageEdge[],
+  adjMap?: { downstreamMap: Map<string, string[]> },
 ): Set<string> {
   const visited = new Set<string>();
   const queue = [`${datasetKey}::${field}`];
@@ -246,14 +308,20 @@ function traceDownstream(
     if (visited.has(current)) continue;
     visited.add(current);
 
-    const [ds1, ds2, col] = splitColumnKey(current);
-    const dsKey = `${ds1}::${ds2}`;
-
-    for (const edge of edges) {
-      if (edge.sourceDataset === dsKey && edge.sourceField === col) {
-        const tgtKey = `${edge.targetDataset}::${edge.targetField}`;
-        if (!visited.has(tgtKey)) {
-          queue.push(tgtKey);
+    if (adjMap) {
+      const targets = adjMap.downstreamMap.get(current);
+      if (targets) {
+        for (const tgt of targets) {
+          if (!visited.has(tgt)) queue.push(tgt);
+        }
+      }
+    } else {
+      const [ds1, ds2, col] = splitColumnKey(current);
+      const dsKey = `${ds1}::${ds2}`;
+      for (const edge of _edges) {
+        if (edge.sourceDataset === dsKey && edge.sourceField === col) {
+          const tgtKey = `${edge.targetDataset}::${edge.targetField}`;
+          if (!visited.has(tgtKey)) queue.push(tgtKey);
         }
       }
     }
@@ -305,10 +373,12 @@ function ResetLayoutButton({ initialNodes }: { initialNodes: Node[] }) {
 
 const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
   const { isDark } = useThemeContext();
-  const [selectedColumn, setSelectedColumn] = useState<{ datasetKey: string; field: string } | null>(null);
+  const [selectedColumns, setSelectedColumns] = useState<Array<{ datasetKey: string; field: string }>>([]);
   const [columnFilter, setColumnFilter] = useState('');
   const [transformationFilter, setTransformationFilter] = useState('');
-
+  const [columnNameFilters, setColumnNameFilters] = useState<string[]>([]);
+  const [columnNameInput, setColumnNameInput] = useState('');
+  const deferredColumnNameInput = useDeferredValue(columnNameInput);
   const transformationOptions = useMemo(() => {
     return Array.from(
       new Set(
@@ -327,30 +397,77 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     );
   }, [data.columnLineageEdges, transformationFilter]);
 
-  useEffect(() => {
-    onSelectionChange?.(selectedColumn);
-  }, [selectedColumn, onSelectionChange]);
+  // Pre-build adjacency maps once per activeEdges change — O(E)
+  const activeAdjMap = useMemo(() => buildAdjacencyMaps(activeEdges), [activeEdges]);
+
+  const columnFilteredEdges = useMemo(() => {
+    const allTerms = [...columnNameFilters];
+    const liveInput = deferredColumnNameInput.trim();
+    if (liveInput) allTerms.push(liveInput);
+    if (allTerms.length === 0) return activeEdges;
+
+    const normalizedFilters = allTerms.map((f) => f.toLowerCase());
+
+    // Collect unique matching field keys using a Set to avoid duplicate BFS calls
+    const seen = new Set<string>();
+    const matchingFieldKeys: Array<{ datasetKey: string; field: string }> = [];
+    for (const edge of activeEdges) {
+      const srcKey = `${edge.sourceDataset}::${edge.sourceField}`;
+      if (!seen.has(srcKey) && normalizedFilters.some((f) => edge.sourceField.toLowerCase().includes(f))) {
+        seen.add(srcKey);
+        matchingFieldKeys.push({ datasetKey: edge.sourceDataset, field: edge.sourceField });
+      }
+      const tgtKey = `${edge.targetDataset}::${edge.targetField}`;
+      if (!seen.has(tgtKey) && normalizedFilters.some((f) => edge.targetField.toLowerCase().includes(f))) {
+        seen.add(tgtKey);
+        matchingFieldKeys.push({ datasetKey: edge.targetDataset, field: edge.targetField });
+      }
+    }
+
+    if (matchingFieldKeys.length === 0) return [];
+
+    const tracedColumns = new Set<string>();
+    for (const { datasetKey, field } of matchingFieldKeys) {
+      const upstream = traceUpstream(datasetKey, field, activeEdges, activeAdjMap);
+      const downstream = traceDownstream(datasetKey, field, activeEdges, activeAdjMap);
+      for (const key of upstream) tracedColumns.add(key);
+      for (const key of downstream) tracedColumns.add(key);
+    }
+
+    return activeEdges.filter((edge) => {
+      const srcKey = `${edge.sourceDataset}::${edge.sourceField}`;
+      const tgtKey = `${edge.targetDataset}::${edge.targetField}`;
+      return tracedColumns.has(srcKey) && tracedColumns.has(tgtKey);
+    });
+  }, [activeEdges, activeAdjMap, columnNameFilters, deferredColumnNameInput]);
 
   useEffect(() => {
-    if (!selectedColumn) {
+    const last = selectedColumns.length > 0 ? selectedColumns[selectedColumns.length - 1] : null;
+    onSelectionChange?.(last);
+  }, [selectedColumns, onSelectionChange]);
+
+  useEffect(() => {
+    if (selectedColumns.length === 0) {
       return;
     }
 
-    const stillVisible = activeEdges.some(
-      (edge) =>
-        (edge.sourceDataset === selectedColumn.datasetKey && edge.sourceField === selectedColumn.field) ||
-        (edge.targetDataset === selectedColumn.datasetKey && edge.targetField === selectedColumn.field),
+    const remaining = selectedColumns.filter((sel) =>
+      columnFilteredEdges.some(
+        (edge) =>
+          (edge.sourceDataset === sel.datasetKey && edge.sourceField === sel.field) ||
+          (edge.targetDataset === sel.datasetKey && edge.targetField === sel.field),
+      ),
     );
 
-    if (!stillVisible) {
-      setSelectedColumn(null);
+    if (remaining.length !== selectedColumns.length) {
+      setSelectedColumns(remaining);
     }
-  }, [activeEdges, selectedColumn]);
+  }, [columnFilteredEdges, selectedColumns]);
 
   // Build the base graph data (stable across selection changes)
   const { baseNodes, baseEdges, connectedFields } = useMemo(() => {
     const dsInLineage = new Set<string>();
-    for (const edge of activeEdges) {
+    for (const edge of columnFilteredEdges) {
       dsInLineage.add(edge.sourceDataset);
       dsInLineage.add(edge.targetDataset);
     }
@@ -360,11 +477,11 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
       const key = `${ds.namespace}::${ds.name}`;
       if (!dsInLineage.has(key)) continue;
       if (!dsMap.has(key)) {
-        dsMap.set(key, { ds, columns: new Set(transformationFilter ? [] : ds.schema.map((f) => f.name)) });
+        dsMap.set(key, { ds, columns: new Set((transformationFilter || columnNameFilters.length > 0 || deferredColumnNameInput.trim()) ? [] : ds.schema.map((f) => f.name)) });
       }
     }
 
-    for (const edge of activeEdges) {
+    for (const edge of columnFilteredEdges) {
       const srcEntry = dsMap.get(edge.sourceDataset);
       if (srcEntry) srcEntry.columns.add(edge.sourceField);
       const tgtEntry = dsMap.get(edge.targetDataset);
@@ -400,7 +517,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
       });
     }
 
-    for (const clEdge of activeEdges) {
+    for (const clEdge of columnFilteredEdges) {
       const edgeId = `${clEdge.sourceDataset}::${clEdge.sourceField}->${clEdge.targetDataset}::${clEdge.targetField}`;
       edges.push({
         id: edgeId,
@@ -421,24 +538,39 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     }
 
     const connected = new Set<string>();
-    for (const edge of activeEdges) {
+    for (const edge of columnFilteredEdges) {
       connected.add(`${edge.sourceDataset}::${edge.sourceField}`);
       connected.add(`${edge.targetDataset}::${edge.targetField}`);
     }
 
     return { baseNodes: nodes, baseEdges: edges, connectedFields: connected, dsColumnsMap: dsMap };
-  }, [activeEdges, data.datasets, isDark, transformationFilter]);
+  }, [columnFilteredEdges, data.datasets, isDark, transformationFilter, columnNameFilters, deferredColumnNameInput]);
 
   const handleColumnClick = useCallback((datasetKey: string, column: string) => {
-    setSelectedColumn((prev) =>
-      prev && prev.datasetKey === datasetKey && prev.field === column
-        ? null
-        : { datasetKey, field: column },
-    );
+    setSelectedColumns((prev) => {
+      const exists = prev.some((s) => s.datasetKey === datasetKey && s.field === column);
+      if (exists) {
+        return prev.filter((s) => !(s.datasetKey === datasetKey && s.field === column));
+      }
+      return [...prev, { datasetKey, field: column }];
+    });
+  }, []);
+
+  const handleSelectAll = useCallback((datasetKey: string, columns: string[]) => {
+    setSelectedColumns((prev) => {
+      const allSelected = columns.every((col) =>
+        prev.some((s) => s.datasetKey === datasetKey && s.field === col),
+      );
+      if (allSelected) {
+        return prev.filter((s) => s.datasetKey !== datasetKey);
+      }
+      const withoutThisDataset = prev.filter((s) => s.datasetKey !== datasetKey);
+      return [...withoutThisDataset, ...columns.map((col) => ({ datasetKey, field: col }))];
+    });
   }, []);
 
   const handlePaneClick = useCallback(() => {
-    setSelectedColumn(null);
+    setSelectedColumns([]);
   }, []);
 
   // Compute highlighted columns and edges based on selection
@@ -446,13 +578,19 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     let traceSet: Set<string> | null = null;
     const normalizedFilter = columnFilter.trim().toLowerCase();
 
-    if (selectedColumn) {
-      const upstream = traceUpstream(selectedColumn.datasetKey, selectedColumn.field, activeEdges);
-      const downstream = traceDownstream(selectedColumn.datasetKey, selectedColumn.field, activeEdges);
-      traceSet = new Set([...upstream, ...downstream]);
+    if (selectedColumns.length > 0) {
+      // Build adjacency maps for the filtered edge set once
+      const filteredAdjMap = buildAdjacencyMaps(columnFilteredEdges);
+      traceSet = new Set<string>();
+      for (const sel of selectedColumns) {
+        const upstream = traceUpstream(sel.datasetKey, sel.field, columnFilteredEdges, filteredAdjMap);
+        const downstream = traceDownstream(sel.datasetKey, sel.field, columnFilteredEdges, filteredAdjMap);
+        for (const key of upstream) traceSet.add(key);
+        for (const key of downstream) traceSet.add(key);
+      }
     }
 
-    const hasSelection = selectedColumn !== null;
+    const hasSelection = selectedColumns.length > 0;
 
     const finalNodes = baseNodes.map((node) => {
       const cols = node.data.columns as string[];
@@ -473,19 +611,23 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           hasSelection,
           hasFilter: Boolean(normalizedFilter),
           onColumnClick: handleColumnClick,
+          onSelectAll: handleSelectAll,
           datasetKey: node.id,
         },
       };
     });
 
+    // Build a Map for O(1) edge lookup instead of O(E) .find() per edge
+    const edgeByIdMap = new Map<string, ColumnLineageEdge>();
+    for (const cl of columnFilteredEdges) {
+      edgeByIdMap.set(`${cl.sourceDataset}::${cl.sourceField}->${cl.targetDataset}::${cl.targetField}`, cl);
+    }
+
     const finalEdges = baseEdges.map((edge) => {
       if (!traceSet && !normalizedFilter) return edge;
 
-      // Check if this edge connects two traced columns
-      const clEdge = activeEdges.find((cl) => {
-        const eid = `${cl.sourceDataset}::${cl.sourceField}->${cl.targetDataset}::${cl.targetField}`;
-        return eid === edge.id;
-      });
+      // O(1) lookup instead of O(E) .find()
+      const clEdge = edgeByIdMap.get(edge.id);
 
       if (clEdge) {
         const srcKey = `${clEdge.sourceDataset}::${clEdge.sourceField}`;
@@ -530,7 +672,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     });
 
     return { finalNodes, finalEdges };
-  }, [baseNodes, baseEdges, selectedColumn, columnFilter, activeEdges, connectedFields, handleColumnClick, isDark]);
+  }, [baseNodes, baseEdges, selectedColumns, columnFilter, columnFilteredEdges, connectedFields, handleColumnClick, handleSelectAll, isDark]);
 
   const { nodes: initialNodes } = useMemo(
     () => getLayoutedElements(baseNodes, baseEdges),
@@ -619,11 +761,94 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
               </option>
             ))}
           </select>
+          <div
+            style={{
+              minWidth: '260px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              border: `1px solid ${isDark ? '#484644' : '#C8C6C4'}`,
+              backgroundColor: isDark ? '#252423' : '#FFFFFF',
+            }}
+          >
+            {columnNameFilters.map((term) => (
+              <span
+                key={term}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '3px 8px',
+                  borderRadius: '999px',
+                  backgroundColor: 'rgba(0,120,212,0.12)',
+                  color: '#0078D4',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  fontFamily: "'Segoe UI', sans-serif",
+                }}
+              >
+                {term}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setColumnNameFilters((prev) => prev.filter((t) => t !== term));
+                    setSelectedColumns([]);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#0078D4',
+                    cursor: 'pointer',
+                    padding: 0,
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <input
+              type="text"
+              value={columnNameInput}
+              onChange={(event) => setColumnNameInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && columnNameInput.trim()) {
+                  event.preventDefault();
+                  const term = columnNameInput.trim();
+                  if (!columnNameFilters.includes(term)) {
+                    setColumnNameFilters((prev) => [...prev, term]);
+                    setSelectedColumns([]);
+                  }
+                  setColumnNameInput('');
+                } else if (event.key === 'Backspace' && !columnNameInput && columnNameFilters.length > 0) {
+                  setColumnNameFilters((prev) => prev.slice(0, -1));
+                  setSelectedColumns([]);
+                }
+              }}
+              placeholder={columnNameFilters.length > 0 ? 'Mais colunas... (Enter para fixar)' : 'Rastrear linhagem da coluna (Enter para fixar)'}
+              style={{
+                flex: 1,
+                minWidth: '140px',
+                border: 'none',
+                outline: 'none',
+                backgroundColor: 'transparent',
+                color: isDark ? '#FAF9F8' : '#323130',
+                fontSize: '13px',
+                fontFamily: "'Segoe UI', sans-serif",
+                padding: '4px 2px',
+              }}
+            />
+          </div>
           <input
             type="search"
             value={columnFilter}
             onChange={(event) => setColumnFilter(event.target.value)}
-            placeholder="Filtrar ou realcar coluna"
+            placeholder="Buscar e realçar coluna"
             style={{
               minWidth: '280px',
               padding: '10px 12px',
@@ -635,12 +860,15 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
               fontFamily: "'Segoe UI', sans-serif",
             }}
           />
-          {columnFilter || transformationFilter ? (
+          {columnFilter || transformationFilter || columnNameFilters.length > 0 || columnNameInput ? (
             <button
               type="button"
               onClick={() => {
                 setColumnFilter('');
                 setTransformationFilter('');
+                setColumnNameFilters([]);
+                setColumnNameInput('');
+                setSelectedColumns([]);
               }}
               style={{
                 padding: '10px 12px',
