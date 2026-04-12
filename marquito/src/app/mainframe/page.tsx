@@ -10,6 +10,7 @@ import TableLineage from '@/components/TableLineage';
 import ColumnLineage from '@/components/ColumnLineage';
 import { formatRawTransformation } from '@/lib/mainframe/transformationCatalog';
 import { loadBundles, saveBundles, clearBundles, StoredBundle } from '@/lib/mainframe/bundleStorage';
+import { exportLineageExcel } from '@/lib/mainframe/exportLineageExcel';
 
 interface LoadedBundle {
   id: string;
@@ -518,6 +519,7 @@ export default function MainframePage() {
         isDark={isDark}
         selectedFields={selectedFields}
         rulesByField={resolveMultiFieldRules(filteredData, selectedFields)}
+        data={filteredData}
       />
     </div>
   );
@@ -629,10 +631,12 @@ function MainframeRulePanel({
   isDark,
   selectedFields,
   rulesByField,
+  data,
 }: {
   isDark: boolean;
   selectedFields: Array<{ datasetKey: string; field: string }>;
   rulesByField: FieldRuleGroup[];
+  data: ParsedLineage;
 }) {
   return (
     <section style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 24px 32px' }}>
@@ -648,10 +652,31 @@ function MainframeRulePanel({
           <h2 style={{ margin: 0, fontSize: '20px', color: isDark ? '#FAF9F8' : '#323130' }}>
             Regras do campo
           </h2>
-          <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C' }}>
-            {selectedFields.length > 0
-              ? `${selectedFields.length} campo${selectedFields.length > 1 ? 's' : ''} selecionado${selectedFields.length > 1 ? 's' : ''}`
-              : 'Nenhum campo selecionado'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C' }}>
+              {selectedFields.length > 0
+                ? `${selectedFields.length} campo${selectedFields.length > 1 ? 's' : ''} selecionado${selectedFields.length > 1 ? 's' : ''}`
+                : 'Nenhum campo selecionado'}
+            </div>
+            {selectedFields.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => exportLineageExcel(data, selectedFields)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: `1px solid ${isDark ? '#484644' : '#C8C6C4'}`,
+                  backgroundColor: '#0078D4',
+                  color: '#FFFFFF',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Exportar Excel
+              </button>
+            ) : null}
           </div>
         </div>
 
