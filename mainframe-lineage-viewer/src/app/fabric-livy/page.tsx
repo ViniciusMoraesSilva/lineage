@@ -51,7 +51,7 @@ export default function FabricLivyPage() {
 
   // Restore session from sessionStorage
   useEffect(() => {
-    const saved = sessionStorage.getItem("marquito-livy-session");
+    const saved = sessionStorage.getItem("mainframe-lineage-session");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -97,7 +97,7 @@ export default function FabricLivyPage() {
 
       setSessionId(sid);
       sessionStorage.setItem(
-        "marquito-livy-session",
+        "mainframe-lineage-session",
         JSON.stringify({
           sessionId: sid,
           workspaceId: config.workspaceId,
@@ -369,7 +369,7 @@ export default function FabricLivyPage() {
                   ))}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/fabric-marquito-pre-reqs.png"
+                    src="/fabric-lineage-pre-reqs.png"
                     alt="Fabric Lakehouse tables"
                     style={{
                       display: "block",

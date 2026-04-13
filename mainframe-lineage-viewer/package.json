@@ -1,6 +1,7 @@
 {
-  "name": "marquito",
+  "name": "mainframe-lineage-viewer",
   "version": "0.1.0",
+  "author": "Vinicius Moraes",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3002",

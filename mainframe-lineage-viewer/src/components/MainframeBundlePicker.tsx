@@ -136,13 +136,6 @@ const MainframeBundlePicker = ({
         >
           Adicionar JCL
         </button>
-        <button
-          type="button"
-          onClick={handleSample}
-          style={{ ...secondaryButton(isDark), width: 'auto', padding: '10px 14px', fontSize: '13px', marginTop: 0 }}
-        >
-          Adicionar amostra
-        </button>
         <span style={{ fontSize: '12px', color: isDark ? '#A19F9D' : '#605E5C' }}>
           Envie varios `.zip` de uma vez ou um conjunto unico de CSVs soltos. O viewer acumula os JCLs automaticamente.
         </span>
@@ -193,7 +186,7 @@ const MainframeBundlePicker = ({
               color: isDark ? '#FAF9F8' : '#323130',
             }}
           >
-            Column lineage de mainframe no estilo Marquito
+            Column lineage de mainframe
           </h1>
           <p
             style={{
@@ -204,7 +197,7 @@ const MainframeBundlePicker = ({
             }}
           >
             Carregue o bundle canônico do extractor e o site converte os datasets e campos
-            para a mesma experiência visual do column lineage do Marquito, incluindo origem
+            para a mesma experiência visual de column lineage, incluindo origem
             por `hard_code`, regras e dependências entre colunas.
           </p>
         </div>
@@ -344,17 +337,27 @@ function secondaryButton(isDark: boolean): React.CSSProperties {
     borderRadius: '8px',
     border: `1px solid ${isDark ? '#484644' : '#C8C6C4'}`,
     backgroundColor: isDark ? '#252423' : '#FFFFFF',
-    color: isDark ? '#FAF9F8' : '#323130',
+    color: isDark ? '#F3F2F1' : '#323130',
     fontSize: '14px',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
   };
 }
 
 async function readResponseText(response: Response): Promise<string> {
   if (!response.ok) {
-    throw new Error(`Falha ao carregar ${response.url}`);
+    throw new Error(`Falha ao carregar amostra (${response.status})`);
   }
+
+  return response.text();
+}
+
+async function fetchOptionalText(path: string): Promise<string | undefined> {
+  const response = await fetch(path);
+  if (!response.ok) {
+    return undefined;
+  }
+
   return response.text();
 }
 
@@ -412,14 +415,6 @@ function isBundleFileName(name: string): boolean {
     REQUIRED_FILES.includes(name as (typeof REQUIRED_FILES)[number]) ||
     OPTIONAL_FILES.includes(name as (typeof OPTIONAL_FILES)[number])
   );
-}
-
-async function fetchOptionalText(url: string): Promise<string | undefined> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    return undefined;
-  }
-  return response.text();
 }
 
 export default MainframeBundlePicker;

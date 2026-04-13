@@ -1,0 +1,243 @@
+plan_id: mainframe-lineage-author-attribution
+objective: |
+  Introduzir atribuição profissional de autoria usando "Vinicius Moraes"
+  sem substituir a marca principal do produto. O produto continua sendo
+  "Mainframe Lineage Viewer" e a autoria aparece de forma discreta,
+  séria e compatível com apresentação para stakeholders.
+created_at: "2026-04-12"
+created_by: gem-planner
+status: completed
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 2
+  total_dependencies: 2
+  risk_score: low
+
+tldr: |
+  Plano simples em 3 tarefas. Primeiro ajustar a atribuição visível no rodapé
+  e os metadados do app para refletir autoria profissional com "Vinicius Moraes".
+  Depois validar consistência visual, ausência de apelido na interface e build limpo.
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: "O nome pessoal ganhar mais destaque que o nome do produto"
+      likelihood: low
+      impact: medium
+      mitigation: "Manter 'Mainframe Lineage Viewer' como branding principal e deixar a autoria apenas como crédito secundário"
+    - scenario: "Atribuição ficar informal ou inconsistente com a proposta séria da aplicação"
+      likelihood: low
+      impact: medium
+      mitigation: "Usar texto objetivo como 'Desenvolvido por Vinicius Moraes' e não expor apelidos na UI"
+  assumptions:
+    - "A marca principal da aplicação continuará sendo 'Mainframe Lineage Viewer'"
+    - "O nome pessoal deve aparecer de forma discreta, preferencialmente no rodapé e metadados"
+    - "O apelido 'monstro' não deve aparecer na interface por não combinar com a proposta séria"
+
+implementation_specification:
+  code_structure: |
+    A mudança deve ser mínima e concentrada nos pontos de branding secundário.
+    O nome do produto permanece no header, título e navegação. A autoria profissional
+    entra no Footer e nos metadados estruturais da aplicação. Não é necessário criar
+    novas páginas nem alterar a navegação.
+  affected_areas:
+    - marquito/src/components/Footer.tsx
+    - marquito/src/app/layout.tsx
+    - marquito/package.json
+  component_details:
+    - component: Footer
+      responsibility: "Exibir crédito profissional discreto com 'Vinicius Moraes' sem competir com a marca do produto"
+      interfaces:
+        - "Texto secundário como 'Desenvolvido por Vinicius Moraes'"
+        - "Crédito existente ao Marquito/OpenLineage preservado"
+    - component: Root metadata
+      responsibility: "Declarar autoria profissional nos metadados da aplicação"
+      interfaces:
+        - "metadata.authors ou metadata.creator com 'Vinicius Moraes'"
+    - component: package.json
+      responsibility: "Registrar autor do pacote de forma consistente com o branding profissional"
+      interfaces:
+        - "Campo author com 'Vinicius Moraes'"
+  dependencies:
+    - component: Footer
+      relationship: "Renderizado globalmente pelo layout, impactando todas as rotas"
+    - component: Root metadata
+      relationship: "Usado pelo layout raiz para título e metadados do app"
+  integration_points:
+    - "Footer já concentra créditos de origem do projeto"
+    - "layout.tsx já define metadata principal do produto"
+    - "package.json já contém nome do pacote e pode receber autoria sem afetar runtime"
+
+contracts:
+  - from_task: T1
+    to_task: T3
+    interface: "Footer com crédito profissional de autoria"
+    format: "Componente TSX"
+  - from_task: T2
+    to_task: T3
+    interface: "Metadados e package.json atualizados com autor profissional"
+    format: "TypeScript metadata e JSON"
+
+tasks:
+  - id: T1
+    title: "Adicionar autoria profissional no rodapé"
+    description: |
+      Ajustar o Footer para incluir uma assinatura discreta e séria com
+      "Vinicius Moraes", sem remover o branding principal do produto e sem
+      apagar o crédito ao Marquito/OpenLineage. A autoria deve ser visualmente
+      secundária ao nome "Mainframe Lineage Viewer".
+    wave: 1
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: marquito/src/components/Footer.tsx
+        description: "Rodapé atual com nome do produto e crédito ao projeto-base"
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 20
+    focus_area: footer-branding
+    verification:
+      - "Footer exibe 'Vinicius Moraes' em contexto profissional"
+      - "Mainframe Lineage Viewer continua sendo o texto principal do rodapé"
+      - "Crédito ao Marquito/OpenLineage permanece visível"
+    acceptance_criteria:
+      - "A interface não exibe o apelido 'monstro'"
+      - "A autoria aparece como crédito secundário e profissional"
+      - "O branding principal continua sendo do produto, não da pessoa"
+    failure_modes:
+      - scenario: "Rodapé fica poluído com excesso de créditos"
+        likelihood: low
+        impact: low
+        mitigation: "Usar apenas uma linha curta e hierarquia tipográfica discreta"
+    tech_stack:
+      - React 18
+      - TypeScript
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T2
+    title: "Registrar Vinicius Moraes nos metadados do app"
+    description: |
+      Atualizar os metadados do layout e o package.json para refletir autoria
+      profissional com "Vinicius Moraes". Isso inclui campos como metadata.authors,
+      metadata.creator ou equivalentes e o campo author no package.json, mantendo
+      o nome do produto inalterado.
+    wave: 1
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: marquito/src/app/layout.tsx
+        description: "Metadata principal do aplicativo"
+      - path: marquito/package.json
+        description: "Manifesto do pacote"
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 15
+    focus_area: metadata
+    verification:
+      - "layout.tsx declara autoria com 'Vinicius Moraes'"
+      - "package.json contém campo author com 'Vinicius Moraes'"
+      - "title do produto permanece 'Mainframe Lineage Viewer'"
+    acceptance_criteria:
+      - "Os metadados passam a refletir autoria profissional"
+      - "Nenhum apelido é adicionado aos metadados públicos"
+      - "A marca principal do produto não é alterada"
+    failure_modes:
+      - scenario: "Metadados são preenchidos em formato incompatível com Next.js"
+        likelihood: low
+        impact: medium
+        mitigation: "Usar apenas campos suportados pela tipagem Metadata"
+    tech_stack:
+      - Next.js 15
+      - TypeScript
+      - JSON
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T3
+    title: "Validar consistência da assinatura profissional"
+    description: |
+      Executar validação final para garantir que a interface continua séria,
+      que 'Vinicius Moraes' aparece apenas nos lugares corretos e que não existe
+      referência ao apelido 'monstro' no app. Confirmar também que build e typecheck
+      seguem limpos após os ajustes.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+      - T2
+    conflicts_with: []
+    context_files:
+      - path: marquito/src/components/Footer.tsx
+        description: "Verificação visual do crédito final"
+      - path: marquito/src/app/layout.tsx
+        description: "Verificação dos metadados finais"
+      - path: marquito/package.json
+        description: "Verificação do author"
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 10
+    focus_area: validation
+    verification:
+      - "npx tsc --noEmit sem erros"
+      - "npm run build completa com sucesso"
+      - "Busca por 'monstro' no app não retorna ocorrências indevidas"
+      - "Busca por 'Vinicius Moraes' retorna apenas os pontos planejados"
+    acceptance_criteria:
+      - "Zero erros de TypeScript"
+      - "Build final limpo"
+      - "Assinatura profissional consistente com a proposta séria da aplicação"
+    failure_modes:
+      - scenario: "O nome aparece em mais lugares do que o planejado e enfraquece a marca do produto"
+        likelihood: low
+        impact: medium
+        mitigation: "Limitar a autoria ao rodapé e metadados, removendo qualquer exposição extra"
+    tech_stack:
+      - Next.js 15
+      - TypeScript
+    test_coverage: null
+    requires_review: true
+    review_depth: standard
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Build e assinatura final estão corretos"
+        steps:
+          - "Executar typecheck"
+          - "Executar build"
+          - "Buscar por 'monstro' e 'Vinicius Moraes' no código"
+        expected_result: "Aplicação mantém tom profissional e sem regressões"
+    environment: development
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []

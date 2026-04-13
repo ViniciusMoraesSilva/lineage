@@ -5,8 +5,10 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 export const metadata: Metadata = {
-  title: 'Marquito — OpenLineage Visualizer',
-  description: 'A simplified OpenLineage data lineage visualizer with table-level and column-level lineage.',
+  title: 'Mainframe Lineage Viewer',
+  description: 'Mainframe data lineage visualizer with table-level and column-level lineage.',
+  authors: [{ name: 'Vinicius Moraes' }],
+  creator: 'Vinicius Moraes',
   icons: { icon: '/favicon.svg' },
 };
 

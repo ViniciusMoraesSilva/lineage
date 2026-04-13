@@ -31,7 +31,7 @@ function delay(ms: number): Promise<void> {
 
 export async function createSession(config: LivyConfig): Promise<string> {
   const url = `${buildBaseUrl(config)}/sessions`;
-  const body = { name: 'marquito-livy-session' };
+  const body = { name: 'mainframe-lineage-session' };
 
   const res = await fetch(url, {
     method: 'POST',

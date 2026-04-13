@@ -339,7 +339,7 @@ export default function MainframePage() {
             Viewer de column lineage a partir do bundle canonico
           </h1>
           <p style={{ fontSize: '14px', lineHeight: '1.6', color: isDark ? '#A19F9D' : '#605E5C', maxWidth: '900px' }}>
-            Cada dataset do mainframe foi convertido para o formato visual do Marquito. Clique em qualquer coluna
+            Cada dataset do mainframe foi convertido para o formato visual de column lineage. Clique em qualquer coluna
             para rastrear upstream e downstream, incluindo regras por `db_lookup`, `compute`, `conditional` e
             origens sinteticas de `HARD_CODE`.
           </p>

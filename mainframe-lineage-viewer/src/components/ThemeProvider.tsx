@@ -25,10 +25,10 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     setMounted(true);
-    let localTheme = localStorage.getItem('marquito-theme');
+    let localTheme = localStorage.getItem('mainframe-lineage-theme');
     if (!localTheme) {
       localTheme = themeType.light;
-      localStorage.setItem('marquito-theme', localTheme);
+      localStorage.setItem('mainframe-lineage-theme', localTheme);
     }
     const fluentTheme = localTheme === themeType.dark ? darkTheme : lightTheme;
     document.body.setAttribute('data-theme', localTheme);
@@ -36,10 +36,10 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const toggleTheme = () => {
-    const localTheme = localStorage.getItem('marquito-theme');
+    const localTheme = localStorage.getItem('mainframe-lineage-theme');
     const fluentTheme = localTheme === themeType.light ? darkTheme : lightTheme;
     const newLocalTheme = localTheme === themeType.light ? themeType.dark : themeType.light;
-    localStorage.setItem('marquito-theme', newLocalTheme);
+    localStorage.setItem('mainframe-lineage-theme', newLocalTheme);
     document.body.setAttribute('data-theme', newLocalTheme);
     setTheme({ value: fluentTheme, key: newLocalTheme });
   };

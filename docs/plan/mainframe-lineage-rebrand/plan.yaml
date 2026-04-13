@@ -1,0 +1,394 @@
+plan_id: mainframe-lineage-rebrand
+objective: |
+  Rebrand the application from "Marquito" to "Mainframe Lineage Viewer".
+  Make the mainframe page the default landing page.
+  Hide OpenLineage and Fabric Livy navigation links behind a hidden/collapsed menu.
+  Add credit to Marquito/OpenLineage in the footer.
+created_at: "2026-04-12"
+created_by: gem-planner
+status: completed
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 4
+  total_dependencies: 4
+  risk_score: low
+
+tldr: |
+  Rebrand completo em 5 tarefas organizadas em 2 waves:
+  Wave 1 (paralela): Atualiza metadata/package.json, reescreve Header com nav oculta,
+  reescreve Footer com crédito ao Marquito, e faz "/" redirecionar para /mainframe.
+  Wave 2: Build + verificação final de todas as mudanças integradas.
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: "Links de navegação ocultos ficam completamente inacessíveis"
+      likelihood: low
+      impact: medium
+      mitigation: "Manter links funcionais mas com visibilidade reduzida (ex: menu '...' ou seção 'Mais' colapsável)"
+    - scenario: "Redirect de '/' para '/mainframe' quebra static export do Next.js"
+      likelihood: medium
+      impact: high
+      mitigation: "Usar page.tsx de '/' com redirect client-side via useEffect + router.replace ao invés de server redirect"
+  assumptions:
+    - "O app usa Next.js 15 com output: 'export' (static site generation)"
+    - "A rota /openlineage aponta para o page.tsx raiz (/) — não existe /openlineage/page.tsx"
+    - "Header e Footer são componentes únicos usados no layout.tsx raiz"
+
+implementation_specification:
+  code_structure: |
+    Modificações pontuais em arquivos existentes. Nenhum componente novo é necessário.
+    O Header será reestruturado para mostrar apenas "Mainframe" visível e agrupar
+    OpenLineage + Fabric Livy em um submenu discreto ou com opacity muito baixa.
+    O Footer terá texto rebrandado e crédito ao Marquito.
+    O page.tsx raiz fará redirect para /mainframe.
+  affected_areas:
+    - marquito/src/components/Header.tsx
+    - marquito/src/components/Footer.tsx
+    - marquito/src/app/layout.tsx
+    - marquito/src/app/page.tsx
+    - marquito/package.json
+  component_details:
+    - component: Header
+      responsibility: "Exibir nome 'Mainframe Lineage Viewer', nav com Mainframe visível, OpenLineage e Fabric Livy ocultos"
+      interfaces:
+        - "Nav link 'Mainframe' como principal"
+        - "Links OpenLineage e Fabric Livy acessíveis via menu '⋯ Mais' ou opacity reduzida"
+    - component: Footer
+      responsibility: "Exibir 'Mainframe Lineage Viewer' com crédito 'Baseado no Marquito / OpenLineage'"
+      interfaces:
+        - "Texto de crédito com links para Marquito e OpenLineage"
+    - component: "Root page (/)"
+      responsibility: "Redirecionar para /mainframe como página principal"
+      interfaces:
+        - "Client-side redirect via router.replace('/mainframe')"
+    - component: layout.tsx
+      responsibility: "Metadata atualizada com novo nome e descrição"
+      interfaces:
+        - "title: 'Mainframe Lineage Viewer'"
+  dependencies:
+    - component: Header
+      relationship: "Importado e renderizado pelo layout.tsx raiz"
+    - component: Footer
+      relationship: "Importado e renderizado pelo layout.tsx raiz"
+  integration_points:
+    - "layout.tsx renderiza Header e Footer — mudanças afetam todas as rotas"
+    - "page.tsx raiz (/) — redirect impacta a rota inicial"
+    - "next.config.mjs com output: 'export' — restringe uso de middleware/redirects server-side"
+
+contracts:
+  - from_task: T1
+    to_task: T5
+    interface: "Metadata e package.json atualizados"
+    format: "Arquivos JSON e TSX"
+  - from_task: T2
+    to_task: T5
+    interface: "Header rebrandado com nav oculta"
+    format: "Componente TSX"
+  - from_task: T3
+    to_task: T5
+    interface: "Footer rebrandado com crédito"
+    format: "Componente TSX"
+  - from_task: T4
+    to_task: T5
+    interface: "Redirect de / para /mainframe funcionando"
+    format: "Componente TSX com useEffect"
+
+tasks:
+  - id: T1
+    title: "Atualizar metadata e package.json com novo nome"
+    description: |
+      Atualizar o title e description no layout.tsx de "Marquito — OpenLineage Visualizer"
+      para "Mainframe Lineage Viewer". Atualizar name no package.json de "marquito" para
+      "mainframe-lineage-viewer". Atualizar o ícone SVG do Header de "ML" (que já existe)
+      para manter consistência.
+    wave: 1
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: marquito/src/app/layout.tsx
+        description: "Layout raiz com metadata title/description"
+      - path: marquito/package.json
+        description: "Nome do pacote NPM"
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 10
+    focus_area: metadata
+    verification:
+      - "layout.tsx title contém 'Mainframe Lineage Viewer'"
+      - "package.json name é 'mainframe-lineage-viewer'"
+    acceptance_criteria:
+      - "Nenhuma referência a 'Marquito' existir em layout.tsx"
+      - "package.json.name = 'mainframe-lineage-viewer'"
+    failure_modes:
+      - scenario: "Metadata incorreta quebra SEO/compartilhamento"
+        likelihood: low
+        impact: low
+        mitigation: "Verificar HTML gerado após build"
+    tech_stack:
+      - Next.js 15
+      - TypeScript
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T2
+    title: "Rebrandar Header e ocultar nav OpenLineage/Livy"
+    description: |
+      No Header.tsx:
+      1. Manter o nome "Mainframe Lineage Viewer" no link principal (já existe).
+      2. Manter o link "Mainframe" como nav principal visível.
+      3. Agrupar os links "OpenLineage" e "Fabric Livy" dentro de um menu dropdown
+         discreto com botão "⋯" (três pontos) ou similar, de forma que fiquem
+         acessíveis mas não visíveis na navegação principal.
+      4. Remover o link externo "OpenLineage" e "GitHub" do canto direito do header,
+         mantendo apenas o ThemeToggle.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: marquito/src/components/Header.tsx
+        description: "Componente Header com nav links visíveis para Mainframe, OpenLineage e Fabric Livy"
+    estimated_effort: medium
+    estimated_files: 1
+    estimated_lines: 120
+    focus_area: header-navigation
+    verification:
+      - "Link 'Mainframe' está visível e ativo no nav"
+      - "Links 'OpenLineage' e 'Fabric Livy' existem mas estão ocultos atrás de menu"
+      - "Título 'Mainframe Lineage Viewer' visível no header"
+      - "Links externos (OpenLineage, GitHub) removidos do canto direito"
+    acceptance_criteria:
+      - "Navegação principal mostra apenas 'Mainframe'"
+      - "OpenLineage e Fabric Livy acessíveis via menu '⋯' ou similar"
+      - "As rotas /openlineage e /fabric-livy continuam funcionando quando acessadas"
+      - "Título do header exibe 'Mainframe Lineage Viewer'"
+    failure_modes:
+      - scenario: "Menu dropdown não abre/fecha corretamente"
+        likelihood: medium
+        impact: medium
+        mitigation: "Implementar com estado local simples (useState) e click-outside handler"
+    tech_stack:
+      - React 18
+      - Next.js 15
+      - TypeScript
+      - Fluent UI Icons
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Menu oculto abre e exibe links"
+        steps:
+          - "Clicar no botão '⋯' no header"
+          - "Verificar que links OpenLineage e Fabric Livy aparecem"
+          - "Clicar em um link e verificar navegação"
+        expected_result: "Links funcionais acessíveis pelo menu"
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T3
+    title: "Rebrandar Footer com crédito ao Marquito"
+    description: |
+      No Footer.tsx:
+      1. Trocar "Marquito — OpenLineage Visualizer" por "Mainframe Lineage Viewer".
+      2. Adicionar texto de crédito: "Baseado no Marquito / OpenLineage" com links para
+         o repositório original do Marquito e para openlineage.io.
+      3. Manter seção "Powered by" existente mas simplificar (pode manter OpenLineage,
+         remover Spark e Delta Lake que são específicos do use-case original).
+      4. Atualizar o ícone SVG do footer para consistência com o novo branding.
+    wave: 1
+    agent: gem-implementer
+    priority: medium
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: marquito/src/components/Footer.tsx
+        description: "Componente Footer com branding Marquito e links Powered by"
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 40
+    focus_area: footer-branding
+    verification:
+      - "Footer exibe 'Mainframe Lineage Viewer'"
+      - "Texto de crédito ao Marquito/OpenLineage visível"
+      - "Link para repositório Marquito funcional"
+    acceptance_criteria:
+      - "Nenhuma referência isolada a 'Marquito' sem contexto de crédito"
+      - "Crédito inclui link para Marquito e OpenLineage"
+      - "Footer mantém estilo visual consistente (Fluent/Segoe UI)"
+    failure_modes:
+      - scenario: "Links de crédito apontam para URLs inválidas"
+        likelihood: low
+        impact: low
+        mitigation: "Verificar URLs do Marquito no GitHub antes de implementar"
+    tech_stack:
+      - React 18
+      - TypeScript
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T4
+    title: "Redirect raiz (/) para /mainframe"
+    description: |
+      Modificar o page.tsx raiz (src/app/page.tsx) para redirecionar automaticamente
+      para /mainframe. Como o app usa output: 'export' (static), usar redirect
+      client-side com useEffect + router.replace('/mainframe'). O conteúdo OpenLineage
+      que estava em page.tsx raiz deve ser movido para uma nova rota /openlineage/page.tsx
+      para preservar a funcionalidade.
+      
+      Passos:
+      1. Criar src/app/openlineage/page.tsx com o conteúdo atual de src/app/page.tsx (a
+         função Home() e todas suas dependências).
+      2. Substituir src/app/page.tsx por um componente simples que faz redirect para /mainframe.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: marquito/src/app/page.tsx
+        description: "Página raiz atual com visualizador OpenLineage genérico"
+      - path: marquito/src/app/mainframe/page.tsx
+        description: "Página mainframe que será a nova landing page"
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 30
+    focus_area: routing
+    verification:
+      - "Acessar '/' redireciona para '/mainframe'"
+      - "Acessar '/openlineage' carrega o visualizador OpenLineage original"
+      - "Acessar '/mainframe' funciona normalmente"
+    acceptance_criteria:
+      - "'/' não exibe conteúdo OpenLineage diretamente"
+      - "'/' redireciona para '/mainframe' sem flash de conteúdo"
+      - "O visualizador OpenLineage é acessível em '/openlineage'"
+      - "Build estático (next build) completa sem erros"
+    failure_modes:
+      - scenario: "Redirect client-side causa flash de conteúdo branco"
+        likelihood: medium
+        impact: low
+        mitigation: "Mostrar loading state mínimo ou usar redirect no metadata (meta refresh)"
+      - scenario: "Static export não suporta a rota nova corretamente"
+        likelihood: low
+        impact: high
+        mitigation: "Verificar com 'next build' que a rota /openlineage é gerada"
+    tech_stack:
+      - Next.js 15
+      - React 18
+      - TypeScript
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Redirect da raiz funciona"
+        steps:
+          - "Acessar http://localhost:3002/"
+          - "Verificar que URL muda para /mainframe"
+          - "Verificar que página mainframe carrega corretamente"
+        expected_result: "Redirect transparente para /mainframe"
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T5
+    title: "Build, verificação e limpeza de referências"
+    description: |
+      Executar build completo e verificar que:
+      1. `next build` completa sem erros
+      2. `npx tsc --noEmit` passa sem erros
+      3. Buscar referências residuais a "Marquito" que não sejam crédito
+         (grep -r "Marquito" src/ — apenas no Footer como crédito é aceitável)
+      4. Verificar que o texto "Loading OpenLineage data…" no page.tsx foi atualizado
+         ou movido para /openlineage
+      5. Atualizar session name 'marquito-livy-session' em livy/client.ts para
+         'mainframe-lineage-session'
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: pending
+    dependencies:
+      - T1
+      - T2
+      - T3
+      - T4
+    conflicts_with: []
+    context_files:
+      - path: marquito/src/lib/livy/client.ts
+        description: "Cliente Livy com nome de sessão 'marquito-livy-session'"
+      - path: marquito/src/app/page.tsx
+        description: "Verificar que referências OpenLineage foram movidas"
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 15
+    focus_area: verification
+    verification:
+      - "`next build` completa com sucesso"
+      - "`npx tsc --noEmit` sem erros"
+      - "Nenhuma referência a 'Marquito' fora do contexto de crédito no Footer"
+      - "Nome de sessão Livy atualizado"
+    acceptance_criteria:
+      - "Build estático gera todas as rotas: /, /mainframe, /openlineage, /fabric-livy"
+      - "Zero erros de TypeScript"
+      - "Referências a 'Marquito' existem apenas como crédito"
+    failure_modes:
+      - scenario: "Build falha por import circular ou rota inexistente"
+        likelihood: low
+        impact: high
+        mitigation: "Corrigir imports e verificar estrutura de arquivos"
+    tech_stack:
+      - Next.js 15
+      - TypeScript
+    test_coverage: null
+    requires_review: true
+    review_depth: standard
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Build completo funciona"
+        steps:
+          - "Executar npm run build"
+          - "Verificar output em /out"
+          - "Servir com npx serve out e testar rotas"
+        expected_result: "Todas as rotas funcionam corretamente com novo branding"
+    environment: development
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
