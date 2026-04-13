@@ -267,7 +267,7 @@ tasks:
       client-side com useEffect + router.replace('/mainframe'). O conteúdo OpenLineage
       que estava em page.tsx raiz deve ser movido para uma nova rota /openlineage/page.tsx
       para preservar a funcionalidade.
-      
+
       Passos:
       1. Criar src/app/openlineage/page.tsx com o conteúdo atual de src/app/page.tsx (a
          função Home() e todas suas dependências).
