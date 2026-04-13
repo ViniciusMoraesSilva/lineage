@@ -50,6 +50,14 @@ flowchart TD
 | STEP030 | IKJEFT01 executando CBLDB001 | &&TMPIN001, &&TMPIN002 e DB2 | &&TMPOUT03 | Enriquece, calcula e classifica registros dos dois ramos |
 | STEP040 | SORT | &&TMPOUT03 | APP.ARQ.SAIDA.CBLDB001 | Preserva a saída e injeta identificador técnico do batch |
 
+## Nota sobre a amostra didatica exibida no viewer
+
+Esta documentacao descreve o comportamento de negocio inferido a partir dos artefatos reais de `JCLDB001`: JCL, COBOL, copybooks e DCLGEN. Para demonstracao do viewer, existe tambem um acrescimo controlado na amostra publica carregada pelo botao `Carregar amostra JCLDB001`, servida a partir de `mainframe-lineage-viewer/public/mainframe-sample`.
+
+O campo demonstrativo criado nessa amostra chama-se `OUT-DEMO-FALLBACK`. Ele foi introduzido apenas para mostrar um caso visual de `unfilled -> resolved`: em `&&TMPOUT03` o campo existe no schema mas nao recebe upstream real; em `APP.ARQ.SAIDA.CBLDB001` ele e propagado e depois resolvido pela regra condicional `IF OUT-DEMO-FALLBACK = ' ' THEN 'LATE_FILL_DEMO' ELSE OUT-DEMO-FALLBACK`.
+
+Esse trecho nao deve ser interpretado como extracao literal de uma regra de negocio real do COBOL ou do JCL. No fluxo real documentado abaixo, o STEP040 apenas preserva a saida do STEP030 e injeta o identificador tecnico `JCLBATCH01` em `OUT-HARD-JCL`.
+
 ## Significado de negócio de cada step / ramo principal
 
 ### STEP010 - cópia de INPUT1
@@ -253,6 +261,15 @@ nível de confiança: alto
 - valor de saída no exemplo: JCLBATCH01
 - nível de confiança: alto
 
+### Campo demonstrativo da amostra do viewer: OUT-DEMO-FALLBACK
+
+- status nesta documentacao: campo didatico de demonstracao, fora do conjunto de regras reais inferidas do job
+- dataset de demonstracao: `&&TMPOUT03` e `APP.ARQ.SAIDA.CBLDB001` na copia publica servida pelo viewer
+- papel na demonstracao: expor um campo que aparece sem upstream resolvido na etapa intermediaria e passa a ficar resolvido na etapa final
+- regra demonstrativa aplicada na saida final: `IF OUT-DEMO-FALLBACK = ' ' THEN 'LATE_FILL_DEMO' ELSE OUT-DEMO-FALLBACK`
+- leitura correta: usar esse campo para explicar o comportamento visual do lineage, nao para descrever uma regra real de negocio do `JCLDB001`
+- nível de confiança: alto
+
 ## Regras de negócio identificadas
 
 | Regra | Tipo | Descrição de negócio |
@@ -372,6 +389,11 @@ Visão de negócio:
 | OUT-CANAL-SAIDA | B2 antes do override no ramo INPUT2 | constante literal | Define um default técnico inicial no ramo 2 | alto |
 | OUT-HARD-JCL | JCLBATCH01 | constante literal | Carimbo técnico do job aplicando o fechamento final | alto |
 
+Nota de leitura:
+
+- `OUT-DEMO-FALLBACK` aparece somente na amostra didatica servida pelo viewer para ilustrar o caminho `unfilled -> resolved`
+- ele nao faz parte do conjunto de constantes e campos de negocio inferidos literalmente a partir dos artefatos reais do job
+
 ## Pontos de lookup em DB2 / VSAM
 
 Evidência observada:
@@ -405,6 +427,7 @@ nível de confiança: alto
 | Semântica exata de INPUT2 | O copybook mostra documento, indicador, produto e moeda | O ramo representa documentos ou itens operacionais/comerciais | médio |
 | Uso de OUT-HARD1, OUT-HARD2 e OUT-HARD3 | Literais fixos no programa | Esses campos servem à rastreabilidade e auditoria técnica | médio |
 | Participação de VSAM | Nenhuma evidência de acesso indexado | O fluxo não usa VSAM | alto |
+| Campo `OUT-DEMO-FALLBACK` no viewer | O campo existe na amostra pública servida em `public/mainframe-sample`, mas não aparece nos artefatos reais analisados | Trata-se de um recurso didático para demonstrar visualmente o caminho `unfilled -> resolved`, não de uma extração literal do job | alto |
 
 ```mermaid
 flowchart LR

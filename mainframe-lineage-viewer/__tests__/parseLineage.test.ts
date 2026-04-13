@@ -1,4 +1,4 @@
-import { parseLineageText, validateJsonl, SAMPLE_DATASETS } from '../src/lib/parseLineage';
+import { parseLineageText, validateJsonl, SAMPLE_DATASETS, injectUnfilledFieldSample } from '../src/lib/parseLineage';
 
 // ---------------------------------------------------------------------------
 // Helper: build a minimal OpenLineage event as a JSON string
@@ -318,6 +318,35 @@ describe('validateJsonl', () => {
 
 describe('parseLineageText', () => {
   const parsed = parseLineageText(pipelineJsonl);
+
+  it('injects both a persistent unfilled example and a recovered example into sample data', () => {
+    const injected = injectUnfilledFieldSample(parsed);
+
+    const tableB = injected.datasets.find((dataset) => dataset.name === '/data/target.db/table_b');
+    const tableC = injected.datasets.find((dataset) => dataset.name === '/data/target.db/table_c');
+
+    expect(tableB?.schema.some((field) => field.name === 'Demo_Laranja_Persistente')).toBe(true);
+    expect(tableB?.schema.some((field) => field.name === 'Demo_Laranja_Vira_Azul')).toBe(true);
+    expect(tableC?.columnLineage?.Demo_Laranja_Persistente?.inputFields).toEqual([
+      {
+        namespace: 'file',
+        name: '/data/target.db/table_b',
+        field: 'Demo_Laranja_Persistente',
+      },
+    ]);
+    expect(tableC?.columnLineage?.Demo_Laranja_Vira_Azul?.inputFields).toEqual([
+      {
+        namespace: 'file',
+        name: '/data/target.db/table_b',
+        field: 'Demo_Laranja_Vira_Azul',
+      },
+      {
+        namespace: 'file',
+        name: '/data/source.db/table_a',
+        field: 'Demo_Laranja_Vira_Azul',
+      },
+    ]);
+  });
 
   it('parses all events including APPLICATION events', () => {
     // parseLineageText parses all lines; APPLICATION is filtered during processing

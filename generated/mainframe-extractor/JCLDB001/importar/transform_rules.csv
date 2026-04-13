@@ -28,3 +28,4 @@ R026,S003,conditional,constante_condicional,E006,OUT-TIPO-SAIDA,IF IN2-INDICADOR
 R027,S003,conditional,constante_condicional,E006,OUT-OCORRENCIA,IF IN2-INDICADOR = 'S' THEN '000' ELSE '020',Occurrence code derived from INPUT2 indicator
 R028,S003,db_lookup,uso_chave_busca,E006,OUT-CHAVE,WS-CHAVE-PESQUISA -> DB2 WHERE CHAVE_CLIENTE = HV-CHAVE-CLIENTE,DB2 lookup is keyed by the incoming record key
 R029,S004,sort,copia_enriquecimento_registro,E007,*,SORT FIELDS=COPY + OUTREC OVERLAY=(291:C'JCLBATCH01'),Final SORT copies all output fields and injects JCL marker
+R030,S004,conditional,constante_condicional,E007,OUT-DEMO-FALLBACK,IF OUT-DEMO-FALLBACK = ' ' THEN 'LATE_FILL_DEMO' ELSE OUT-DEMO-FALLBACK,Didactic fallback fills the blank propagated field in final output

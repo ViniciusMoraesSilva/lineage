@@ -18,6 +18,10 @@ import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
 import { useThemeContext } from './ThemeProvider';
 import { ParsedLineage, ColumnLineageEdge, ParsedDataset } from '@/lib/types';
+import {
+  buildColumnFieldKey,
+  computeColumnFieldLineageStatus,
+} from '@/lib/columnFieldLineage';
 
 interface ColumnLineageProps {
   data: ParsedLineage;
@@ -38,13 +42,30 @@ function ColumnDatasetNode({ data }: NodeProps) {
     hasFilter: boolean;
     isDark: boolean;
     accentColor: string;
+    fieldStatuses: Record<string, 'resolved' | 'unfilled'>;
+    activeColumnFilters: string[];
     onColumnClick: (datasetKey: string, column: string) => void;
-    onSelectAll: (datasetKey: string, columns: string[]) => void;
+    onSelectColumns: (datasetKey: string, columns: string[]) => void;
     onFilterColumn: (columnName: string) => void;
-    onFilterAll: (columns: string[]) => void;
+    onFilterColumns: (columns: string[]) => void;
     datasetKey: string;
   };
   const { isDark, hasSelection, hasFilter } = nodeData;
+  const normalizedActiveFilters = new Set(nodeData.activeColumnFilters.map((column) => column.toLowerCase()));
+  const resolvedTraceableColumns = nodeData.columns.filter(
+    (column) =>
+      nodeData.highlightedColumns.includes(column) && nodeData.fieldStatuses[column] !== 'unfilled',
+  );
+  const allColumnsSelected =
+    nodeData.columns.length > 0 && nodeData.columns.every((column) => nodeData.selectedColumns.includes(column));
+  const resolvedTraceableSelected =
+    resolvedTraceableColumns.length > 0 &&
+    resolvedTraceableColumns.every((column) => nodeData.selectedColumns.includes(column));
+  const allColumnsFiltered =
+    nodeData.columns.length > 0 && nodeData.columns.every((column) => normalizedActiveFilters.has(column.toLowerCase()));
+  const resolvedTraceableFiltered =
+    resolvedTraceableColumns.length > 0 &&
+    resolvedTraceableColumns.every((column) => normalizedActiveFilters.has(column.toLowerCase()));
 
   return (
     <div
@@ -103,9 +124,9 @@ function ColumnDatasetNode({ data }: NodeProps) {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            nodeData.onSelectAll(nodeData.datasetKey, nodeData.columns);
+            nodeData.onSelectColumns(nodeData.datasetKey, resolvedTraceableColumns);
           }}
-          title={nodeData.selectedColumns.length === nodeData.columns.length && nodeData.columns.length > 0 ? 'Desmarcar todos' : 'Selecionar todos'}
+          title={resolvedTraceableSelected ? 'Desmarcar campos azuis com rastreabilidade' : 'Selecionar campos azuis com rastreabilidade'}
           style={{
             marginLeft: 'auto',
             background: 'transparent',
@@ -115,21 +136,25 @@ function ColumnDatasetNode({ data }: NodeProps) {
             padding: '4px 10px',
             fontSize: '12px',
             fontWeight: 600,
-            color: nodeData.selectedColumns.length === nodeData.columns.length && nodeData.columns.length > 0
+            color: resolvedTraceableSelected
               ? '#0078D4'
+              : resolvedTraceableColumns.length === 0
+                ? isDark ? '#605E5C' : '#A19F9D'
               : isDark ? '#A19F9D' : '#605E5C',
             lineHeight: 1.2,
             flexShrink: 0,
+            opacity: resolvedTraceableColumns.length === 0 ? 0.55 : 1,
           }}
+          disabled={resolvedTraceableColumns.length === 0}
         >
-          {nodeData.selectedColumns.length === nodeData.columns.length && nodeData.columns.length > 0 ? '✓ All' : '☐ All'}
+          {resolvedTraceableSelected ? '✓ Blue' : '☐ Blue'}
         </button>
         <button
           onClick={(e) => {
             e.stopPropagation();
-            nodeData.onFilterAll(nodeData.columns);
+            nodeData.onSelectColumns(nodeData.datasetKey, nodeData.columns);
           }}
-          title="Rastrear linhagem de todas as colunas"
+          title={allColumnsSelected ? 'Desmarcar todos, incluindo laranja' : 'Selecionar todos, incluindo laranja'}
           style={{
             background: 'transparent',
             border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
@@ -138,13 +163,67 @@ function ColumnDatasetNode({ data }: NodeProps) {
             padding: '4px 10px',
             fontSize: '12px',
             fontWeight: 600,
-            color: isDark ? '#A19F9D' : '#605E5C',
+            color: allColumnsSelected
+              ? '#0078D4'
+              : isDark ? '#A19F9D' : '#605E5C',
             lineHeight: 1.2,
             flexShrink: 0,
             marginLeft: '4px',
           }}
         >
-          ⛶ All
+          {allColumnsSelected ? '✓ All' : '☐ All'}
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            nodeData.onFilterColumns(resolvedTraceableColumns);
+          }}
+          title={resolvedTraceableFiltered ? 'Remover rastreamento em grupo dos campos azuis com rastreabilidade' : 'Rastrear em grupo apenas os campos azuis com rastreabilidade'}
+          style={{
+            background: 'transparent',
+            border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+            borderRadius: '4px',
+            cursor: 'pointer',
+            padding: '4px 10px',
+            fontSize: '12px',
+            fontWeight: 600,
+            color: resolvedTraceableFiltered
+              ? '#0078D4'
+              : resolvedTraceableColumns.length === 0
+                ? isDark ? '#605E5C' : '#A19F9D'
+                : isDark ? '#A19F9D' : '#605E5C',
+            lineHeight: 1.2,
+            flexShrink: 0,
+            marginLeft: '4px',
+            opacity: resolvedTraceableColumns.length === 0 ? 0.55 : 1,
+          }}
+          disabled={resolvedTraceableColumns.length === 0}
+        >
+          {resolvedTraceableFiltered ? '◈ Blue' : '⛶ Blue'}
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            nodeData.onFilterColumns(nodeData.columns);
+          }}
+          title={allColumnsFiltered ? 'Remover rastreamento em grupo de todos os campos, incluindo laranja' : 'Rastrear em grupo todos os campos, incluindo laranja'}
+          style={{
+            background: 'transparent',
+            border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+            borderRadius: '4px',
+            cursor: 'pointer',
+            padding: '4px 10px',
+            fontSize: '12px',
+            fontWeight: 600,
+            color: allColumnsFiltered
+              ? '#0078D4'
+              : isDark ? '#A19F9D' : '#605E5C',
+            lineHeight: 1.2,
+            flexShrink: 0,
+            marginLeft: '4px',
+          }}
+        >
+          {allColumnsFiltered ? '◈ All' : '⛶ All'}
         </button>
       </div>
       <div style={{ padding: '4px 0' }}>
@@ -153,6 +232,10 @@ function ColumnDatasetNode({ data }: NodeProps) {
           const isHighlighted = nodeData.highlightedColumns.includes(col);
           const isMatched = nodeData.matchedColumns.includes(col);
           const isDimmed = (hasSelection && !isSelected) || (hasFilter && !isMatched && !isSelected);
+          const isUnfilled = nodeData.fieldStatuses[col] === 'unfilled';
+          const semanticAccent = '#F7630C';
+          const selectedAccent = isUnfilled ? semanticAccent : '#0078D4';
+          const semanticBackground = isDark ? 'rgba(247,99,12,0.24)' : 'rgba(247,99,12,0.14)';
 
           return (
             <div
@@ -172,21 +255,30 @@ function ColumnDatasetNode({ data }: NodeProps) {
                   ? '#FFFFFF'
                   : isDimmed
                     ? isDark ? '#605E5C' : '#A19F9D'
+                    : isUnfilled
+                      ? isDark ? '#FFD7B5' : '#8A3700'
                     : isHighlighted
                       ? isDark ? '#FAF9F8' : '#323130'
                       : isDark ? '#A19F9D' : '#605E5C',
                 backgroundColor: isSelected
-                  ? '#0078D4'
+                  ? selectedAccent
                   : isDimmed
                     ? 'transparent'
                     : isMatched
                       ? isDark ? 'rgba(216,59,1,0.20)' : 'rgba(216,59,1,0.12)'
+                      : isUnfilled
+                        ? semanticBackground
                       : isHighlighted
                         ? isDark ? 'rgba(0,120,212,0.15)' : 'rgba(0,120,212,0.08)'
                         : 'transparent',
                 position: 'relative',
                 transition: 'background-color 0.15s, color 0.15s',
                 borderRadius: isSelected ? '3px' : '0',
+                borderLeft: isSelected
+                  ? `2px solid ${selectedAccent}`
+                  : isUnfilled
+                    ? `2px solid ${semanticAccent}`
+                    : '2px solid transparent',
               }}
             >
               <Handle
@@ -194,7 +286,13 @@ function ColumnDatasetNode({ data }: NodeProps) {
                 position={Position.Left}
                 id={`${nodeData.label}::${col}::target`}
                 style={{
-                  background: isSelected ? '#0078D4' : isHighlighted && !isDimmed ? '#0078D4' : isDark ? '#484644' : '#C8C6C4',
+                  background: isSelected
+                    ? selectedAccent
+                    : !isDimmed && isUnfilled
+                      ? semanticAccent
+                      : isHighlighted && !isDimmed
+                        ? '#0078D4'
+                        : isDark ? '#484644' : '#C8C6C4',
                   border: 'none',
                   width: 6,
                   height: 6,
@@ -202,6 +300,21 @@ function ColumnDatasetNode({ data }: NodeProps) {
                 }}
               />
               <span style={{ marginLeft: '4px', flex: 1 }}>{col}</span>
+              {!isSelected && isUnfilled ? (
+                <span
+                  title="Campo sem upstream preenchido"
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: semanticAccent,
+                    letterSpacing: '0.2px',
+                    marginRight: '4px',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  null
+                </span>
+              ) : null}
               <button
                 onClick={(ev) => {
                   ev.stopPropagation();
@@ -215,7 +328,7 @@ function ColumnDatasetNode({ data }: NodeProps) {
                   padding: '0 2px',
                   fontSize: '10px',
                   lineHeight: 1,
-                  color: isSelected ? '#FFFFFF' : isDark ? '#605E5C' : '#A19F9D',
+                  color: isSelected ? '#FFFFFF' : isUnfilled ? semanticAccent : isDark ? '#605E5C' : '#A19F9D',
                   opacity: 0.7,
                   flexShrink: 0,
                 }}
@@ -227,7 +340,13 @@ function ColumnDatasetNode({ data }: NodeProps) {
                 position={Position.Right}
                 id={`${nodeData.label}::${col}::source`}
                 style={{
-                  background: isSelected ? '#0078D4' : isHighlighted && !isDimmed ? '#0078D4' : isDark ? '#484644' : '#C8C6C4',
+                  background: isSelected
+                    ? selectedAccent
+                    : !isDimmed && isUnfilled
+                      ? semanticAccent
+                      : isHighlighted && !isDimmed
+                        ? '#0078D4'
+                        : isDark ? '#484644' : '#C8C6C4',
                   border: 'none',
                   width: 6,
                   height: 6,
@@ -423,6 +542,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
   const [columnNameFilters, setColumnNameFilters] = useState<string[]>([]);
   const [columnNameInput, setColumnNameInput] = useState('');
   const deferredColumnNameInput = useDeferredValue(columnNameInput);
+  const fieldStatuses = useMemo(() => computeColumnFieldLineageStatus(data), [data]);
   const transformationOptions = useMemo(() => {
     return Array.from(
       new Set(
@@ -551,6 +671,9 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           highlightedColumns: [] as string[],
           selectedColumns: [] as string[],
           dimmedColumns: [] as string[],
+          fieldStatuses: Object.fromEntries(
+            Array.from(columns).map((column) => [column, fieldStatuses[buildColumnFieldKey(key, column)] || 'resolved']),
+          ),
           hasSelection: false,
           isDark,
           accentColor: roleColors[ds.role] || '#0078D4',
@@ -562,6 +685,11 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
 
     for (const clEdge of columnFilteredEdges) {
       const edgeId = `${clEdge.sourceDataset}::${clEdge.sourceField}->${clEdge.targetDataset}::${clEdge.targetField}`;
+      const sourceFieldStatus = fieldStatuses[buildColumnFieldKey(clEdge.sourceDataset, clEdge.sourceField)] || 'resolved';
+      const targetFieldStatus = fieldStatuses[buildColumnFieldKey(clEdge.targetDataset, clEdge.targetField)] || 'resolved';
+      const isUnfilledPath = sourceFieldStatus === 'unfilled' && targetFieldStatus === 'unfilled';
+      const edgeColor = isUnfilledPath ? '#F7630C' : isDark ? '#484644' : '#C8C6C4';
+
       edges.push({
         id: edgeId,
         source: clEdge.sourceDataset,
@@ -569,13 +697,17 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
         target: clEdge.targetDataset,
         targetHandle: `${dsMap.get(clEdge.targetDataset)?.ds.shortName}::${clEdge.targetField}::target`,
         animated: false,
-        style: { stroke: isDark ? '#484644' : '#C8C6C4', strokeWidth: 1.5 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#484644' : '#C8C6C4', width: 10, height: 10 },
+        style: { stroke: edgeColor, strokeWidth: isUnfilledPath ? 2 : 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor, width: 10, height: 10 },
         label:
           [clEdge.standardTransformationLabel || formatTransformationLabel(resolveTransformationKey(clEdge)), clEdge.stepName || clEdge.stepId]
             .filter(Boolean)
             .join(' • '),
-        labelStyle: { fontSize: 9, fill: isDark ? '#A19F9D' : '#605E5C', fontFamily: "'Segoe UI', sans-serif" },
+        labelStyle: {
+          fontSize: 9,
+          fill: isUnfilledPath ? '#F7630C' : isDark ? '#A19F9D' : '#605E5C',
+          fontFamily: "'Segoe UI', sans-serif",
+        },
         labelBgStyle: { fill: isDark ? '#201F1E' : '#FAF9F8', fillOpacity: 0.9 },
       });
     }
@@ -587,7 +719,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     }
 
     return { baseNodes: nodes, baseEdges: edges, connectedFields: connected, dsColumnsMap: dsMap };
-  }, [columnFilteredEdges, data.datasets, isDark, transformationFilter, columnNameFilters, deferredColumnNameInput]);
+  }, [columnFilteredEdges, data.datasets, deferredColumnNameInput, fieldStatuses, isDark, transformationFilter, columnNameFilters]);
 
   const handleColumnClick = useCallback((datasetKey: string, column: string) => {
     setSelectedColumns((prev) => {
@@ -599,16 +731,26 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     });
   }, []);
 
-  const handleSelectAll = useCallback((datasetKey: string, columns: string[]) => {
+  const handleSelectColumns = useCallback((datasetKey: string, columns: string[]) => {
     setSelectedColumns((prev) => {
+      if (columns.length === 0) {
+        return prev;
+      }
+
       const allSelected = columns.every((col) =>
         prev.some((s) => s.datasetKey === datasetKey && s.field === col),
       );
       if (allSelected) {
-        return prev.filter((s) => s.datasetKey !== datasetKey);
+        return prev.filter(
+          (s) => s.datasetKey !== datasetKey || !columns.includes(s.field),
+        );
       }
-      const withoutThisDataset = prev.filter((s) => s.datasetKey !== datasetKey);
-      return [...withoutThisDataset, ...columns.map((col) => ({ datasetKey, field: col }))];
+
+      const withoutDuplicatedSelection = prev.filter(
+        (s) => s.datasetKey !== datasetKey || !columns.includes(s.field),
+      );
+
+      return [...withoutDuplicatedSelection, ...columns.map((col) => ({ datasetKey, field: col }))];
     });
   }, []);
 
@@ -621,14 +763,28 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     setColumnNameInput('');
   }, []);
 
-  const handleFilterAll = useCallback((columns: string[]) => {
+  const handleFilterColumns = useCallback((columns: string[]) => {
     setColumnNameFilters((prev) => {
+      if (columns.length === 0) {
+        return prev;
+      }
+
       const existing = new Set(prev.map((f) => f.toLowerCase()));
+      const allPresent = columns.every((col) => existing.has(col.toLowerCase()));
+
+      if (allPresent) {
+        return prev.filter((term) => !columns.some((col) => col.toLowerCase() === term.toLowerCase()));
+      }
+
       const newTerms = columns.filter((col) => !existing.has(col.toLowerCase()));
-      if (newTerms.length === 0) return prev;
+      if (newTerms.length === 0) {
+        return prev;
+      }
+
       return [...prev, ...newTerms];
     });
     setColumnNameInput('');
+    setSelectedColumns([]);
   }, []);
 
   const handlePaneClick = useCallback(() => {
@@ -670,12 +826,16 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           highlightedColumns: cols.filter((col: string) => connectedFields.has(`${node.id}::${col}`)),
           selectedColumns: selectedCols,
           matchedColumns: matchedCols,
+          activeColumnFilters: columnNameFilters,
+          fieldStatuses: Object.fromEntries(
+            cols.map((col: string) => [col, fieldStatuses[buildColumnFieldKey(node.id, col)] || 'resolved']),
+          ),
           hasSelection,
           hasFilter: Boolean(normalizedFilter),
           onColumnClick: handleColumnClick,
-          onSelectAll: handleSelectAll,
+          onSelectColumns: handleSelectColumns,
           onFilterColumn: handleFilterColumn,
-          onFilterAll: handleFilterAll,
+          onFilterColumns: handleFilterColumns,
           datasetKey: node.id,
         },
       };
@@ -701,24 +861,29 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           normalizedFilter &&
           (clEdge.sourceField.toLowerCase().includes(normalizedFilter) ||
             clEdge.targetField.toLowerCase().includes(normalizedFilter));
+        const sourceFieldStatus = fieldStatuses[buildColumnFieldKey(clEdge.sourceDataset, clEdge.sourceField)] || 'resolved';
+        const targetFieldStatus = fieldStatuses[buildColumnFieldKey(clEdge.targetDataset, clEdge.targetField)] || 'resolved';
+        const tracedColor = sourceFieldStatus === 'unfilled' && targetFieldStatus === 'unfilled'
+          ? '#F7630C'
+          : '#0078D4';
 
         if (isTraced || isMatched) {
           return {
             ...edge,
             animated: isTraced,
             style: {
-              stroke: isTraced ? '#0078D4' : '#D83B01',
+              stroke: isTraced ? tracedColor : '#D83B01',
               strokeWidth: isTraced ? 2.5 : 2,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: isTraced ? '#0078D4' : '#D83B01',
+              color: isTraced ? tracedColor : '#D83B01',
               width: 10,
               height: 10,
             },
             labelStyle: {
               fontSize: 9,
-              fill: isTraced ? '#0078D4' : '#D83B01',
+              fill: isTraced ? tracedColor : '#D83B01',
               fontWeight: 600,
               fontFamily: "'Segoe UI', sans-serif",
             },
@@ -736,7 +901,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
     });
 
     return { finalNodes, finalEdges };
-  }, [baseNodes, baseEdges, selectedColumns, columnFilter, columnFilteredEdges, connectedFields, handleColumnClick, handleSelectAll, isDark]);
+  }, [baseNodes, baseEdges, selectedColumns, columnFilter, columnFilteredEdges, columnNameFilters, connectedFields, fieldStatuses, handleColumnClick, handleFilterColumns, handleSelectColumns, isDark]);
 
   const { nodes: initialNodes } = useMemo(
     () => getLayoutedElements(baseNodes, baseEdges),
@@ -801,7 +966,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
         </div>
         <p style={{ fontSize: '13px', color: isDark ? '#A19F9D' : '#605E5C', fontFamily: "'Segoe UI', sans-serif", maxWidth: '720px', lineHeight: '1.5' }}>
           Click any column to trace its full lineage upstream and downstream. Click the background to
-          deselect. Quando `steps.csv` estiver presente, as arestas mostram tambem o step relacionado.
+          deselect. Colunas em azul possuem upstream resolvido; colunas em laranja indicam campos criados localmente que seguem sem upstream preenchido. Quando `steps.csv` estiver presente, as arestas mostram tambem o step relacionado.
         </p>
         <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <select

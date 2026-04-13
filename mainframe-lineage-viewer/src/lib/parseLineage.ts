@@ -45,7 +45,13 @@ export async function fetchLineageData(localPath?: string): Promise<ParsedLineag
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Failed to fetch ${url}`);
   const text = await response.text();
-  return parseLineageText(text);
+  const parsed = parseLineageText(text);
+
+  if (url === SAMPLE_DATASETS[0].localPath) {
+    return injectUnfilledFieldSample(parsed);
+  }
+
+  return parsed;
 }
 
 export function validateJsonl(text: string): { valid: boolean; eventCount: number; errors: string[] } {
@@ -246,6 +252,295 @@ function parseEvents(events: OpenLineageEvent[]): ParsedLineage {
       columnLineageCount: columnLineageEdges.length,
       startEvents: events.filter((e) => e.eventType === 'START').length,
       completeEvents: events.filter((e) => e.eventType === 'COMPLETE').length,
+    },
+  };
+}
+
+export function injectUnfilledFieldSample(data: ParsedLineage): ParsedLineage {
+  const persistentDemoField = 'Demo_Laranja_Persistente';
+  const recoveredDemoField = 'Demo_Laranja_Vira_Azul';
+
+  if (data.datasets.some((dataset) => dataset.schema.some((field) => field.name === persistentDemoField))) {
+    return data;
+  }
+
+  const datasetByKey = new Map(
+    data.datasets.map((dataset) => [`${dataset.namespace}::${dataset.name}`, dataset] as const),
+  );
+  const adjacency = new Map<string, Set<string>>();
+
+  for (const edge of data.columnLineageEdges) {
+    if (edge.sourceDataset === edge.targetDataset) {
+      continue;
+    }
+
+    if (!adjacency.has(edge.sourceDataset)) {
+      adjacency.set(edge.sourceDataset, new Set());
+    }
+
+    adjacency.get(edge.sourceDataset)?.add(edge.targetDataset);
+  }
+
+  const findDatasetKeyBySuffix = (suffix: string) =>
+    data.datasets.find((dataset) => dataset.name.endsWith(suffix))
+      ? `${data.datasets.find((dataset) => dataset.name.endsWith(suffix))?.namespace}::${data.datasets.find((dataset) => dataset.name.endsWith(suffix))?.name}`
+      : null;
+
+  let middleDatasetKey: string | null = findDatasetKeyBySuffix('/products_enriched');
+  let downstreamDatasetKey: string | null = findDatasetKeyBySuffix('/sales_enriched');
+  let resolvedDatasetKey: string | null = findDatasetKeyBySuffix('/customer_lifetime_value');
+
+  const preferredChainIsValid =
+    middleDatasetKey &&
+    downstreamDatasetKey &&
+    data.columnLineageEdges.some(
+      (edge) => edge.sourceDataset === middleDatasetKey && edge.targetDataset === downstreamDatasetKey,
+    );
+
+  if (!preferredChainIsValid) {
+    middleDatasetKey = null;
+    downstreamDatasetKey = null;
+    resolvedDatasetKey = null;
+  }
+
+  if (!middleDatasetKey || !downstreamDatasetKey) {
+    for (const [, middleCandidates] of adjacency) {
+      for (const middleCandidate of middleCandidates) {
+        const downstreamCandidates = adjacency.get(middleCandidate);
+        if (!downstreamCandidates || downstreamCandidates.size === 0) {
+          continue;
+        }
+
+        for (const downstreamCandidate of downstreamCandidates) {
+          if (downstreamCandidate !== middleCandidate) {
+            const resolvedCandidates = adjacency.get(downstreamCandidate);
+
+            if (resolvedCandidates) {
+              for (const resolvedCandidate of resolvedCandidates) {
+                if (resolvedCandidate !== downstreamCandidate && resolvedCandidate !== middleCandidate) {
+                  middleDatasetKey = middleCandidate;
+                  downstreamDatasetKey = downstreamCandidate;
+                  resolvedDatasetKey = resolvedCandidate;
+                  break;
+                }
+              }
+            }
+
+            if (!middleDatasetKey || !downstreamDatasetKey) {
+              middleDatasetKey = middleCandidate;
+              downstreamDatasetKey = downstreamCandidate;
+            }
+
+            if (resolvedDatasetKey) {
+              break;
+            }
+          }
+        }
+
+        if (middleDatasetKey && downstreamDatasetKey) {
+          break;
+        }
+      }
+
+      if (middleDatasetKey && downstreamDatasetKey) {
+        break;
+      }
+    }
+  }
+
+  if (!middleDatasetKey || !downstreamDatasetKey) {
+    return data;
+  }
+
+  const middleDataset = datasetByKey.get(middleDatasetKey);
+  const downstreamDataset = datasetByKey.get(downstreamDatasetKey);
+  const resolvedDataset = resolvedDatasetKey ? datasetByKey.get(resolvedDatasetKey) : null;
+
+  const fallbackSourceDataset = data.datasets.find((dataset) => {
+    const datasetKey = `${dataset.namespace}::${dataset.name}`;
+    return dataset.role === 'source' && datasetKey !== middleDatasetKey && datasetKey !== downstreamDatasetKey;
+  });
+
+  if (!middleDataset || !downstreamDataset) {
+    return data;
+  }
+
+  const datasets = data.datasets.map((dataset) => {
+    const datasetKey = `${dataset.namespace}::${dataset.name}`;
+
+    if (
+      datasetKey !== middleDatasetKey &&
+      datasetKey !== downstreamDatasetKey &&
+      datasetKey !== resolvedDatasetKey &&
+      datasetKey !== (fallbackSourceDataset ? `${fallbackSourceDataset.namespace}::${fallbackSourceDataset.name}` : null)
+    ) {
+      return dataset;
+    }
+
+    const schema = dataset.schema.some(
+      (field) => field.name === persistentDemoField || field.name === recoveredDemoField,
+    )
+      ? dataset.schema
+      : [
+        ...dataset.schema,
+        {
+          name: persistentDemoField,
+          type: 'string',
+          description: datasetKey === middleDatasetKey
+            ? 'Campo criado localmente para demonstrar ausencia de upstream.'
+            : 'Campo herdado de um dataset intermediario sem upstream preenchido.',
+        },
+        {
+          name: recoveredDemoField,
+          type: 'string',
+          description: datasetKey === middleDatasetKey
+            ? 'Campo criado localmente para demonstrar retorno ao estado preenchido.'
+            : datasetKey === resolvedDatasetKey
+              ? 'Campo que volta a ter upstream real apos enriquecimento.'
+              : 'Campo propagado a jusante antes de voltar a ficar preenchido.',
+        },
+      ];
+
+    if (fallbackSourceDataset && datasetKey === `${fallbackSourceDataset.namespace}::${fallbackSourceDataset.name}`) {
+      return {
+        ...dataset,
+        schema: dataset.schema.some((field) => field.name === recoveredDemoField)
+          ? dataset.schema
+          : [
+            ...dataset.schema,
+            {
+              name: recoveredDemoField,
+              type: 'string',
+              description: 'Origem real usada para sobrescrever o campo demonstrativo.',
+            },
+          ],
+      };
+    }
+
+    if (datasetKey !== downstreamDatasetKey && datasetKey !== resolvedDatasetKey) {
+      return {
+        ...dataset,
+        schema,
+      };
+    }
+
+    const columnLineage = {
+      ...(dataset.columnLineage || {}),
+      [persistentDemoField]: {
+        inputFields: [
+          {
+            namespace: middleDataset.namespace,
+            name: middleDataset.name,
+            field: persistentDemoField,
+          },
+        ],
+        transformationType: 'DIRECT',
+        transformationDescription: 'Demonstracao de propagacao de campo sem upstream.',
+      },
+      [recoveredDemoField]: {
+        inputFields: [
+          {
+            namespace: datasetKey === downstreamDatasetKey ? middleDataset.namespace : downstreamDataset.namespace,
+            name: datasetKey === downstreamDatasetKey ? middleDataset.name : downstreamDataset.name,
+            field: recoveredDemoField,
+          },
+          ...(((datasetKey === resolvedDatasetKey) || (datasetKey === downstreamDatasetKey && !resolvedDatasetKey)) && fallbackSourceDataset
+            ? [
+              {
+                namespace: fallbackSourceDataset.namespace,
+                name: fallbackSourceDataset.name,
+                field: recoveredDemoField,
+              },
+            ]
+            : []),
+        ],
+        transformationType: datasetKey === resolvedDatasetKey ? 'LOOKUP' : 'DIRECT',
+        transformationDescription: datasetKey === resolvedDatasetKey
+          ? 'Demonstracao de recuperacao do campo com upstream real.'
+          : 'Demonstracao de propagacao do campo antes da recuperacao.',
+      },
+    };
+
+    return {
+      ...dataset,
+      schema,
+      columnLineage,
+    };
+  });
+
+  const columnLineageEdges = [
+    ...data.columnLineageEdges,
+    {
+      sourceDataset: middleDatasetKey,
+      sourceField: persistentDemoField,
+      targetDataset: downstreamDatasetKey,
+      targetField: persistentDemoField,
+      transformationType: 'DIRECT',
+      transformationSubtype: 'IDENTITY',
+      standardTransformationKey: 'copia_identidade',
+      standardTransformationLabel: 'Copia de identidade',
+    },
+    {
+      sourceDataset: middleDatasetKey,
+      sourceField: recoveredDemoField,
+      targetDataset: downstreamDatasetKey,
+      targetField: recoveredDemoField,
+      transformationType: 'DIRECT',
+      transformationSubtype: 'IDENTITY',
+      standardTransformationKey: 'copia_identidade',
+      standardTransformationLabel: 'Copia de identidade',
+    },
+    ...(!resolvedDatasetKey && fallbackSourceDataset
+      ? [
+        {
+          sourceDataset: `${fallbackSourceDataset.namespace}::${fallbackSourceDataset.name}`,
+          sourceField: recoveredDemoField,
+          targetDataset: downstreamDatasetKey,
+          targetField: recoveredDemoField,
+          transformationType: 'LOOKUP',
+          transformationSubtype: 'TRANSFORMATION',
+          standardTransformationKey: 'busca_valor',
+          standardTransformationLabel: 'Busca de valor',
+        },
+      ]
+      : []),
+    ...(resolvedDatasetKey
+      ? [
+        {
+          sourceDataset: downstreamDatasetKey,
+          sourceField: recoveredDemoField,
+          targetDataset: resolvedDatasetKey,
+          targetField: recoveredDemoField,
+          transformationType: 'DIRECT',
+          transformationSubtype: 'IDENTITY',
+          standardTransformationKey: 'copia_identidade',
+          standardTransformationLabel: 'Copia de identidade',
+        },
+        ...(fallbackSourceDataset
+          ? [
+            {
+              sourceDataset: `${fallbackSourceDataset.namespace}::${fallbackSourceDataset.name}`,
+              sourceField: recoveredDemoField,
+              targetDataset: resolvedDatasetKey,
+              targetField: recoveredDemoField,
+              transformationType: 'LOOKUP',
+              transformationSubtype: 'TRANSFORMATION',
+              standardTransformationKey: 'busca_valor',
+              standardTransformationLabel: 'Busca de valor',
+            },
+          ]
+          : []),
+      ]
+      : []),
+  ];
+
+  return {
+    ...data,
+    datasets,
+    columnLineageEdges,
+    stats: {
+      ...data.stats,
+      columnLineageCount: columnLineageEdges.length,
     },
   };
 }

@@ -125,6 +125,14 @@ Arquivos opcionais, mas muito importantes para enriquecer a demonstracao:
 - `artifacts.csv`
 - `evidence.csv`
 
+### Nota sobre a amostra JCLDB001 servida pela UI
+
+- o botao `Carregar amostra JCLDB001` le diretamente a copia estatica publicada em `mainframe-lineage-viewer/public/mainframe-sample`
+- a pasta `generated/mainframe-extractor/JCLDB001/importar` continua sendo a referencia canonica do bundle, mas nao e carregada pelo navegador de forma direta
+- dentro dessa amostra existe um campo demonstrativo chamado `OUT-DEMO-FALLBACK`, criado especificamente para mostrar o caminho `unfilled -> resolved` durante a apresentacao
+- nesse recorte didatico, o campo aparece vazio em `&&TMPOUT03`, e depois e propagado para `APP.ARQ.SAIDA.CBLDB001`, onde passa a ter upstream resolvido por meio da regra condicional `IF OUT-DEMO-FALLBACK = ' ' THEN 'LATE_FILL_DEMO' ELSE OUT-DEMO-FALLBACK`
+- esse comportamento deve ser lido como demonstracao controlada do viewer, nao como extracao literal de uma regra real do COBOL ou do JCL de `JCLDB001`
+
 ### CSVs que existem no bundle gerado, mas nao sao a fonte primaria desta tela
 
 Arquivos como `jobs.csv`, `step_inputs.csv`, `step_outputs.csv`, `openlineage_jobs.csv`, `openlineage_inputs.csv`, `openlineage_outputs.csv`, `openlineage_runs.csv` e `openlineage_column_lineage.csv` existem para interoperabilidade, rastreabilidade operacional e geracao de `openlineage.jsonl`. Eles ajudam a explicar o ecossistema do extractor, mas a tela `/mainframe` nao os le diretamente hoje.
@@ -455,6 +463,8 @@ Se voce quiser apresentar o sistema com um caso concreto, o bundle JCLDB001 e su
 - `steps.csv` mostra a sequencia `ICEGENER -> SORT -> CBLDB001 -> SORT`
 - `artifacts.csv` ancora a narrativa em JCL, COBOL, copybooks e DCLGEN
 - `evidence.csv` prova onde cada conclusao foi encontrada no codigo fonte
+
+Ao apresentar a amostra, vale separar duas camadas de leitura. A primeira e a narrativa fiel do fluxo real de `JCLDB001`, extraida de JCL, COBOL, copybooks e DCLGEN. A segunda e o pequeno acrescimo didatico do campo `OUT-DEMO-FALLBACK` na copia publicada em `public/mainframe-sample`, usado somente para demonstrar em tela como um campo pode aparecer sem upstream resolvido em uma etapa intermediaria e voltar a ficar resolvido na etapa final.
 
 Em outras palavras: o bundle transforma um processo batch antigo em uma narrativa auditavel, visual e demonstravel.
 

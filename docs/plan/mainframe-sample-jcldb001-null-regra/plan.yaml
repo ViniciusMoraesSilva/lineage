@@ -1,0 +1,412 @@
+plan_id: mainframe-sample-jcldb001-null-regra
+objective: |
+  Evoluir a amostra carregada pelo botao "Carregar amostra JCLDB001" para incluir
+  um caso demonstrativo em que um campo nasce sem upstream real em uma tabela,
+  trafega como nao preenchido para a tabela seguinte e, nessa tabela seguinte,
+  passa a ser alimentado por uma regra condicional. O resultado esperado e que
+  o viewer mostre claramente o contraste entre o estado "unfilled" na etapa
+  intermediaria e o estado resolvido na etapa final.
+created_at: "2026-04-13"
+created_by: gem-planner
+status: completed
+research_confidence: medium
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 5
+  risk_score: medium
+
+tldr: |
+  Plano medio em 5 tarefas e 4 waves. Primeiro modelar o cenario didatico no
+  bundle canonico JCLDB001 de origem, definindo um campo demonstrativo que fica
+  sem upstream em &&TMPOUT03 e e copiado para a saida final com uma regra
+  condicional adicional que o preenche. Depois espelhar os CSVs para
+  public/mainframe-sample, documentar que o caso e demonstrativo e nao uma
+  leitura literal do COBOL/JCL, adicionar teste de regressao e validar a
+  experiencia real no viewer.
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: "A amostra publica divergir do bundle canonico em generated e o botao carregar um comportamento diferente do esperado"
+      likelihood: medium
+      impact: high
+      mitigation: "Tratar generated/mainframe-extractor/JCLDB001/importar como fonte canonica e espelhar a mesma mudanca em public/mainframe-sample na mesma entrega"
+    - scenario: "O novo campo demonstrativo parecer comportamento real extraido do COBOL e gerar interpretacao errada em apresentacoes"
+      likelihood: medium
+      impact: medium
+      mitigation: "Documentar explicitamente que o campo e didatico e existe para demonstrar o estado unfilled seguido de preenchimento condicional"
+    - scenario: "A regra condicional nao criar uma origem resolvida no grafo e o campo continuar laranja na etapa final"
+      likelihood: low
+      impact: high
+      mitigation: "Modelar a regra final como condicional com literal, permitindo a criacao da origem sintetica HARD_CODE ja suportada pelo parser"
+  assumptions:
+    - "O objetivo e alterar a amostra estatica do viewer, nao reescrever o JCL ou o COBOL reais do bundle base"
+    - "O viewer ja suporta a semantica de campo unfilled que volta a ficar resolvido quando um upstream valido aparece"
+    - "MainframeBundlePicker le diretamente os CSVs em public/mainframe-sample e nao existe sincronizacao automatica a partir de generated"
+    - "Nao ha docs/PRD.yaml no repositorio; o prompt do usuario e a fonte de verdade para o escopo desta mudanca"
+
+implementation_specification:
+  code_structure: |
+    A mudanca deve permanecer no nivel do bundle canonico da amostra e da sua
+    copia publica. O cenario recomendado e introduzir um campo demonstrativo com
+    o mesmo nome em E006 (&&TMPOUT03) e E007 (APP.ARQ.SAIDA.CBLDB001). Em E006,
+    o campo existe no schema, mas nao recebe nenhum mapping upstream e por isso
+    permanece "unfilled". Em E007, o campo recebe uma copia identidade a partir
+    de E006 e, adicionalmente, uma regra condicional com literal do tipo
+    "se estiver vazio, preencher com valor demonstrativo". Essa regra deve ser
+    modelada de forma que o parser gere a origem sintetica HARD_CODE, permitindo
+    ao viewer resolver o campo na tabela final sem exigir alteracao estrutural no
+    parser ou no grafo.
+  affected_areas:
+    - generated/mainframe-extractor/JCLDB001/importar/entity_columns.csv
+    - generated/mainframe-extractor/JCLDB001/importar/column_mappings.csv
+    - generated/mainframe-extractor/JCLDB001/importar/transform_rules.csv
+    - mainframe-lineage-viewer/public/mainframe-sample/entity_columns.csv
+    - mainframe-lineage-viewer/public/mainframe-sample/column_mappings.csv
+    - mainframe-lineage-viewer/public/mainframe-sample/transform_rules.csv
+    - mainframe-lineage-viewer/__tests__
+    - docs/mainframe-lineage-viewer-v1.md
+  component_details:
+    - component: Bundle canonico JCLDB001
+      responsibility: "Definir o campo demonstrativo, o mapping de propagacao e a regra condicional de preenchimento"
+      interfaces:
+        - "entity_columns.csv com o campo demonstrativo em E006 e E007"
+        - "column_mappings.csv com a propagacao identidade de E006 para E007"
+        - "transform_rules.csv com regra condicional capaz de sintetizar upstream HARD_CODE"
+    - component: Amostra publica do viewer
+      responsibility: "Servir ao botao Carregar amostra JCLDB001 exatamente o mesmo conteudo planejado no bundle canonico"
+      interfaces:
+        - "Arquivos CSV em public/mainframe-sample sincronizados com o bundle de origem"
+    - component: Regressao automatizada
+      responsibility: "Garantir que o campo aparece como unfilled na tabela intermediaria e resolvido na final"
+      interfaces:
+        - "Teste Jest lendo a amostra publica e validando parseCanonicalBundle + computeColumnFieldLineageStatus"
+    - component: Documentacao funcional da amostra
+      responsibility: "Explicar que o exemplo e didatico e descrever a narrativa nulo -> trafega -> regra condicional preenche"
+      interfaces:
+        - "Trecho de documentacao que distinga cenario demonstrativo de extração fiel do codigo fonte"
+  dependencies:
+    - component: MainframeBundlePicker
+      relationship: "Busca diretamente os CSVs de public/mainframe-sample ao acionar o botao de amostra"
+    - component: parseCanonicalBundle
+      relationship: "Converte column_mappings e transform_rules em edges, regras de campo e origem sintetica HARD_CODE"
+    - component: computeColumnFieldLineageStatus
+      relationship: "Marca campos como unfilled quando nao ha upstream resolvido e como resolved quando surge qualquer upstream valido"
+    - component: ColumnLineage
+      relationship: "Ja diferencia visualmente caminhos unfilled e rotula transformacoes condicionais no grafo"
+  integration_points:
+    - "generated/mainframe-extractor/JCLDB001/importar e a representacao canonica que deve permanecer alinhada com a copia deployavel"
+    - "mainframe-lineage-viewer/public/mainframe-sample e a fonte efetivamente carregada pela UI"
+    - "transform_rules.csv pode gerar edges de HARD_CODE sem mapeamento explicito em column_mappings quando a regra e classificada como constante condicional"
+    - "A experiencia final precisa ser verificavel tanto por teste automatizado quanto pela interacao no /mainframe"
+
+contracts:
+  - from_task: T1
+    to_task: T2
+    interface: "CSV canonico com campo demonstrativo, propagacao identidade e regra condicional final"
+    format: "3 arquivos CSV em generated/mainframe-extractor/JCLDB001/importar"
+  - from_task: T1
+    to_task: T3
+    interface: "Semantica oficial do caso didatico e nome final do campo demonstrativo"
+    format: "Definicao funcional do cenario"
+  - from_task: T2
+    to_task: T4
+    interface: "Amostra publica atualizada que o teste pode carregar do mesmo caminho usado pela UI"
+    format: "3 arquivos CSV em public/mainframe-sample"
+  - from_task: T2
+    to_task: T5
+    interface: "Bundle da amostra servindo o novo caminho unfilled -> resolved no viewer"
+    format: "Arquivos estaticos consumidos pelo navegador"
+  - from_task: T4
+    to_task: T5
+    interface: "Confirmacao automatizada de que a semantica esta correta antes da validacao visual"
+    format: "Suite Jest verde"
+
+tasks:
+  - id: T1
+    title: "Modelar o cenario didatico no bundle canonico"
+    description: |
+      Ajustar o bundle canonico em generated/mainframe-extractor/JCLDB001/importar
+      para introduzir um campo demonstrativo de preenchimento tardio. O campo deve
+      existir em E006 e E007 com o mesmo nome. Em E006 ele nao deve receber nenhum
+      upstream real, para que o viewer o trate como unfilled. Em E007 ele deve
+      receber uma aresta de copia identidade a partir de E006 e uma regra
+      condicional adicional do tipo "se vazio entao preencher com literal
+      demonstrativo", permitindo que o parser sintetize a origem HARD_CODE e
+      marque a coluna final como resolvida.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: generated/mainframe-extractor/JCLDB001/importar/entity_columns.csv
+        description: "Schema das entidades E006 e E007 onde o campo demonstrativo sera introduzido"
+      - path: generated/mainframe-extractor/JCLDB001/importar/column_mappings.csv
+        description: "Mappings de E006 para E007 que precisam carregar o campo como identidade"
+      - path: generated/mainframe-extractor/JCLDB001/importar/transform_rules.csv
+        description: "Regra condicional final que deve alimentar o campo na tabela de saida"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 40
+    focus_area: mainframe-sample-bundle
+    verification:
+      - "E006 contem o campo demonstrativo no schema sem upstream real"
+      - "Existe mapping identidade de E006 para E007 para o mesmo campo"
+      - "Existe regra condicional em E007 capaz de sintetizar HARD_CODE"
+    acceptance_criteria:
+      - "O bundle canonico representa explicitamente o caminho nao preenchido -> copia -> preenchimento condicional"
+      - "A regra final e didatica e legivel o suficiente para demonstracao em tela"
+      - "Nenhum campo real de negocio e reinterpretado de forma ambigua para simular o exemplo"
+    failure_modes:
+      - scenario: "A regra final usar tipo/subtipo que o parser nao converte em upstream sintetico"
+        likelihood: medium
+        impact: high
+        mitigation: "Usar classificacao compativel com constante condicional ja suportada em transformationCatalog"
+    tech_stack:
+      - CSV canonico
+      - Taxonomia de transformacoes mainframe
+      - Parser com origem sintetica HARD_CODE
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T2
+    title: "Espelhar a mudanca na amostra publica do viewer"
+    description: |
+      Copiar a mesma semantica de T1 para os CSVs servidos pelo botao
+      Carregar amostra JCLDB001 em public/mainframe-sample. Nao deve haver
+      divergencia entre a versao canonica armazenada em generated e a versao que
+      o navegador realmente consome.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/public/mainframe-sample/entity_columns.csv
+        description: "Schema exposto pela UI"
+      - path: mainframe-lineage-viewer/public/mainframe-sample/column_mappings.csv
+        description: "Edges de lineage de coluna usados pelo parser da tela"
+      - path: mainframe-lineage-viewer/public/mainframe-sample/transform_rules.csv
+        description: "Regras de transformacao mostradas no painel e usadas para HARD_CODE"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 40
+    focus_area: deployable-sample
+    verification:
+      - "Os tres CSVs publicos refletem exatamente o novo campo e a nova regra"
+      - "O botao de amostra continua carregando sem exigir mudanca no MainframeBundlePicker"
+      - "Nao ha divergencia funcional entre generated e public para o cenario planejado"
+    acceptance_criteria:
+      - "Carregar amostra JCLDB001 passa a expor o novo caso didatico"
+      - "A copia publica permanece consistente com a fonte canonica"
+      - "Nenhum outro mapping existente do sample e removido por acidente"
+    failure_modes:
+      - scenario: "Somente um dos lados e atualizado e a UI continua exibindo a amostra antiga"
+        likelihood: medium
+        impact: high
+        mitigation: "Tratar o espelhamento como tarefa explicita e validar os mesmos campos nos dois conjuntos de CSV"
+    tech_stack:
+      - Next.js public static assets
+      - CSV canonico
+      - TypeScript parser existente
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Carga da amostra publica"
+        steps:
+          - "Abrir /mainframe"
+          - "Acionar Carregar amostra JCLDB001"
+          - "Selecionar o campo demonstrativo na tabela intermediaria e na final"
+        expected_result: "A tabela intermediaria mostra estado unfilled e a final mostra campo resolvido por regra"
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T3
+    title: "Documentar o exemplo como caso didatico"
+    description: |
+      Atualizar a documentacao do viewer para explicar que o novo campo existe
+      como demonstracao controlada do comportamento unfilled -> resolved e que
+      esse trecho da amostra nao deve ser interpretado como extracao literal das
+      regras reais do JCLDB001. Registrar tambem que public/mainframe-sample e a
+      copia efetivamente servida pela UI.
+    wave: 2
+    agent: gem-documentation-writer
+    priority: medium
+    status: completed
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: docs/mainframe-lineage-viewer-v1.md
+        description: "Documentacao funcional do bundle e da pagina /mainframe"
+      - path: docs/JCLDB001-documentacao.md
+        description: "Narrativa atual do fluxo JCLDB001 para deixar explicita a fronteira entre regra real e exemplo didatico"
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 30
+    focus_area: documentation
+    verification:
+      - "A documentacao distingue claramente campo real de negocio versus campo demonstrativo"
+      - "A documentacao identifica public/mainframe-sample como fonte carregada pela UI"
+    acceptance_criteria:
+      - "O leitor entende porque o exemplo existe e como ele deve ser lido"
+      - "Nao fica implicito que a regra foi extraida fielmente do COBOL"
+    failure_modes:
+      - scenario: "A documentacao deixar o demo sem aviso e induzir leitura errada do caso"
+        likelihood: medium
+        impact: medium
+        mitigation: "Declarar o escopo didatico no trecho que descreve a amostra JCLDB001"
+    tech_stack:
+      - Markdown
+      - Documentacao de produto
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: documentation
+    audience: stakeholders
+    coverage_matrix: []
+
+  - id: T4
+    title: "Adicionar regressao automatizada da amostra"
+    description: |
+      Criar um teste Jest focado na amostra publica JCLDB001 que carregue os CSVs,
+      execute parseCanonicalBundle e computeColumnFieldLineageStatus e valide o
+      comportamento esperado do campo demonstrativo. O teste deve provar que o
+      campo fica unfilled em E006 e resolvido em E007 por causa da regra
+      condicional/HARD_CODE, sem depender de inspeção manual.
+    wave: 3
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - T2
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/__tests__/columnFieldLineage.test.ts
+        description: "Referencia de semantica atual para unfilled e resolvido"
+      - path: mainframe-lineage-viewer/src/lib/mainframe/parseCanonicalBundle.ts
+        description: "Parser que sintetiza HARD_CODE e gera os edges da amostra"
+      - path: mainframe-lineage-viewer/public/mainframe-sample/transform_rules.csv
+        description: "Fixture real usada pelo novo teste"
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 80
+    focus_area: regression-tests
+    verification:
+      - "Jest valida o status unfilled na tabela intermediaria"
+      - "Jest valida o status resolved na tabela final para o mesmo campo"
+      - "Jest confirma a presenca da origem HARD_CODE ou da regra condicional esperada"
+    acceptance_criteria:
+      - "Existe cobertura automatizada para o novo exemplo"
+      - "A regressao falha se a amostra publica perder a semantica planejada"
+      - "O teste usa os mesmos CSVs que a UI consome"
+    failure_modes:
+      - scenario: "O teste usar fixture artificial separada e nao proteger a amostra real do botao"
+        likelihood: medium
+        impact: medium
+        mitigation: "Ler diretamente os arquivos de public/mainframe-sample no teste"
+    tech_stack:
+      - Jest v29.7.0
+      - TypeScript
+      - parseCanonicalBundle
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T5
+    title: "Validar a experiencia visual no /mainframe"
+    description: |
+      Executar validacao navegador-a-navegador do fluxo real da amostra. O foco e
+      garantir que o usuario consiga carregar a amostra JCLDB001, localizar o
+      campo demonstrativo, enxergar o estado unfilled na etapa intermediaria e a
+      resolucao na etapa final, com a regra condicional aparecendo de forma
+      compreensivel no painel e no grafo.
+    wave: 4
+    agent: gem-browser-tester
+    priority: medium
+    status: pending
+    dependencies:
+      - T2
+      - T4
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/src/components/MainframeBundlePicker.tsx
+        description: "Entrada do fluxo do botao Carregar amostra JCLDB001"
+      - path: mainframe-lineage-viewer/src/components/ColumnLineage.tsx
+        description: "Visualizacao de campos unfilled e de transformacoes condicionais"
+      - path: mainframe-lineage-viewer/public/mainframe-sample/column_mappings.csv
+        description: "Fixture servida no browser"
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 0
+    focus_area: browser-validation
+    verification:
+      - "O botao carrega a amostra sem erro"
+      - "O campo demonstrativo aparece no dataset intermediario e no final"
+      - "A cor/estado do campo muda de unfilled para resolved"
+      - "A regra condicional fica visivel no painel de detalhes"
+    acceptance_criteria:
+      - "A demonstracao pode ser usada em apresentacao sem explicacao manual adicional"
+      - "Nao ha regressao visual no fluxo de carga da amostra"
+    failure_modes:
+      - scenario: "Os CSVs estao corretos mas a interface nao deixa evidente a recuperacao do campo"
+        likelihood: medium
+        impact: medium
+        mitigation: "Capturar evidencia visual e, se necessario, abrir follow-up focado em UX da legenda ou destaque"
+    tech_stack:
+      - Next.js static app
+      - Browser automation
+      - Mainframe sample viewer
+    test_coverage: manual-e2e
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Narrativa visual do campo demonstrativo"
+        steps:
+          - "Carregar a amostra JCLDB001"
+          - "Filtrar ou localizar o campo demonstrativo no lineage de colunas"
+          - "Selecionar a coluna em E006 e depois em E007"
+          - "Abrir o painel de regras"
+        expected_result: "O usuario enxerga a propagacao do estado unfilled e o preenchimento condicional na saida final"
+    environment: local-browser
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []

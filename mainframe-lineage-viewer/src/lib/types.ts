@@ -171,6 +171,8 @@ export interface ParsedDataset {
   jclNames?: string[];
 }
 
+export type ColumnFieldLineageStatus = 'resolved' | 'unfilled';
+
 export interface ColumnLineageEdge {
   sourceDataset: string;
   sourceField: string;
