@@ -90,143 +90,155 @@ function ColumnDatasetNode({ data }: NodeProps) {
           padding: '8px 12px',
           borderBottom: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
           display: 'flex',
-          alignItems: 'flex-start',
+          flexDirection: 'column',
           gap: '8px',
         }}
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill={nodeData.accentColor}>
-          <path d="M8 1C4.5 1 2 2.1 2 3.5v9C2 13.9 4.5 15 8 15s6-1.1 6-2.5v-9C14 2.1 11.5 1 8 1zm0 1.5c3 0 4.5.8 4.5 1S11 4.5 8 4.5 3.5 3.7 3.5 3.5 5 2.5 8 2.5z" />
-        </svg>
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: isDark ? '#FAF9F8' : '#323130',
-            }}
-            title={nodeData.label}
-          >
-            {nodeData.label}
-          </div>
-          {nodeData.subtitle ? (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill={nodeData.accentColor} style={{ flexShrink: 0, marginTop: '2px' }}>
+            <path d="M8 1C4.5 1 2 2.1 2 3.5v9C2 13.9 4.5 15 8 15s6-1.1 6-2.5v-9C14 2.1 11.5 1 8 1zm0 1.5c3 0 4.5.8 4.5 1S11 4.5 8 4.5 3.5 3.7 3.5 3.5 5 2.5 8 2.5z" />
+          </svg>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div
               style={{
-                marginTop: '4px',
-                fontSize: '10px',
-                color: isDark ? '#A19F9D' : '#605E5C',
-                lineHeight: '1.4',
-                maxWidth: '140px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: isDark ? '#FAF9F8' : '#323130',
+                lineHeight: '1.35',
+                overflow: 'hidden',
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
               }}
-              title={nodeData.subtitle}
+              title={nodeData.label}
             >
-              {nodeData.subtitle}
+              {nodeData.label}
             </div>
-          ) : null}
+            {nodeData.subtitle ? (
+              <div
+                style={{
+                  marginTop: '4px',
+                  fontSize: '10px',
+                  color: isDark ? '#A19F9D' : '#605E5C',
+                  lineHeight: '1.4',
+                  overflow: 'hidden',
+                  overflowWrap: 'anywhere',
+                  wordBreak: 'break-word',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}
+                title={nodeData.subtitle}
+              >
+                {nodeData.subtitle}
+              </div>
+            ) : null}
+          </div>
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            nodeData.onSelectColumns(nodeData.datasetKey, resolvedTraceableColumns);
-          }}
-          title={resolvedTraceableSelected ? 'Desmarcar campos azuis com rastreabilidade' : 'Selecionar campos azuis com rastreabilidade'}
-          style={{
-            marginLeft: 'auto',
-            background: 'transparent',
-            border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
-            borderRadius: '4px',
-            cursor: 'pointer',
-            padding: '4px 10px',
-            fontSize: '12px',
-            fontWeight: 600,
-            color: resolvedTraceableSelected
-              ? '#0078D4'
-              : resolvedTraceableColumns.length === 0
-                ? isDark ? '#605E5C' : '#A19F9D'
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              nodeData.onSelectColumns(nodeData.datasetKey, resolvedTraceableColumns);
+            }}
+            title={resolvedTraceableSelected ? 'Desmarcar campos azuis com rastreabilidade' : 'Selecionar campos azuis com rastreabilidade'}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+              borderRadius: '4px',
+              cursor: 'pointer',
+              padding: '4px 10px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: resolvedTraceableSelected
+                ? '#0078D4'
+                : resolvedTraceableColumns.length === 0
+                  ? isDark ? '#605E5C' : '#A19F9D'
+                  : isDark ? '#A19F9D' : '#605E5C',
+              lineHeight: 1.2,
+              flexShrink: 0,
+              opacity: resolvedTraceableColumns.length === 0 ? 0.55 : 1,
+            }}
+            disabled={resolvedTraceableColumns.length === 0}
+          >
+            {resolvedTraceableSelected ? '✓ Blue' : '☐ Blue'}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              nodeData.onSelectColumns(nodeData.datasetKey, nodeData.columns);
+            }}
+            title={allColumnsSelected ? 'Desmarcar todos, incluindo laranja' : 'Selecionar todos, incluindo laranja'}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+              borderRadius: '4px',
+              cursor: 'pointer',
+              padding: '4px 10px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: allColumnsSelected
+                ? '#0078D4'
                 : isDark ? '#A19F9D' : '#605E5C',
-            lineHeight: 1.2,
-            flexShrink: 0,
-            opacity: resolvedTraceableColumns.length === 0 ? 0.55 : 1,
-          }}
-          disabled={resolvedTraceableColumns.length === 0}
-        >
-          {resolvedTraceableSelected ? '✓ Blue' : '☐ Blue'}
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            nodeData.onSelectColumns(nodeData.datasetKey, nodeData.columns);
-          }}
-          title={allColumnsSelected ? 'Desmarcar todos, incluindo laranja' : 'Selecionar todos, incluindo laranja'}
-          style={{
-            background: 'transparent',
-            border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
-            borderRadius: '4px',
-            cursor: 'pointer',
-            padding: '4px 10px',
-            fontSize: '12px',
-            fontWeight: 600,
-            color: allColumnsSelected
-              ? '#0078D4'
-              : isDark ? '#A19F9D' : '#605E5C',
-            lineHeight: 1.2,
-            flexShrink: 0,
-            marginLeft: '4px',
-          }}
-        >
-          {allColumnsSelected ? '✓ All' : '☐ All'}
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            nodeData.onFilterColumns(resolvedTraceableColumns);
-          }}
-          title={resolvedTraceableFiltered ? 'Remover rastreamento em grupo dos campos azuis com rastreabilidade' : 'Rastrear em grupo apenas os campos azuis com rastreabilidade'}
-          style={{
-            background: 'transparent',
-            border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
-            borderRadius: '4px',
-            cursor: 'pointer',
-            padding: '4px 10px',
-            fontSize: '12px',
-            fontWeight: 600,
-            color: resolvedTraceableFiltered
-              ? '#0078D4'
-              : resolvedTraceableColumns.length === 0
-                ? isDark ? '#605E5C' : '#A19F9D'
+              lineHeight: 1.2,
+              flexShrink: 0,
+            }}
+          >
+            {allColumnsSelected ? '✓ All' : '☐ All'}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              nodeData.onFilterColumns(resolvedTraceableColumns);
+            }}
+            title={resolvedTraceableFiltered ? 'Remover rastreamento em grupo dos campos azuis com rastreabilidade' : 'Rastrear em grupo apenas os campos azuis com rastreabilidade'}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+              borderRadius: '4px',
+              cursor: 'pointer',
+              padding: '4px 10px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: resolvedTraceableFiltered
+                ? '#0078D4'
+                : resolvedTraceableColumns.length === 0
+                  ? isDark ? '#605E5C' : '#A19F9D'
+                  : isDark ? '#A19F9D' : '#605E5C',
+              lineHeight: 1.2,
+              flexShrink: 0,
+              opacity: resolvedTraceableColumns.length === 0 ? 0.55 : 1,
+            }}
+            disabled={resolvedTraceableColumns.length === 0}
+          >
+            {resolvedTraceableFiltered ? '◈ Blue' : '⛶ Blue'}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              nodeData.onFilterColumns(nodeData.columns);
+            }}
+            title={allColumnsFiltered ? 'Remover rastreamento em grupo de todos os campos, incluindo laranja' : 'Rastrear em grupo todos os campos, incluindo laranja'}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+              borderRadius: '4px',
+              cursor: 'pointer',
+              padding: '4px 10px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: allColumnsFiltered
+                ? '#0078D4'
                 : isDark ? '#A19F9D' : '#605E5C',
-            lineHeight: 1.2,
-            flexShrink: 0,
-            marginLeft: '4px',
-            opacity: resolvedTraceableColumns.length === 0 ? 0.55 : 1,
-          }}
-          disabled={resolvedTraceableColumns.length === 0}
-        >
-          {resolvedTraceableFiltered ? '◈ Blue' : '⛶ Blue'}
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            nodeData.onFilterColumns(nodeData.columns);
-          }}
-          title={allColumnsFiltered ? 'Remover rastreamento em grupo de todos os campos, incluindo laranja' : 'Rastrear em grupo todos os campos, incluindo laranja'}
-          style={{
-            background: 'transparent',
-            border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
-            borderRadius: '4px',
-            cursor: 'pointer',
-            padding: '4px 10px',
-            fontSize: '12px',
-            fontWeight: 600,
-            color: allColumnsFiltered
-              ? '#0078D4'
-              : isDark ? '#A19F9D' : '#605E5C',
-            lineHeight: 1.2,
-            flexShrink: 0,
-            marginLeft: '4px',
-          }}
-        >
-          {allColumnsFiltered ? '◈ All' : '⛶ All'}
-        </button>
+              lineHeight: 1.2,
+              flexShrink: 0,
+            }}
+          >
+            {allColumnsFiltered ? '◈ All' : '⛶ All'}
+          </button>
+        </div>
       </div>
       <div style={{ padding: '4px 0' }}>
         {nodeData.columns.map((col) => {
@@ -366,8 +378,8 @@ function ColumnDatasetNode({ data }: NodeProps) {
 const nodeTypes = { columnDataset: ColumnDatasetNode };
 
 const COLUMN_DATASET_NODE_WIDTH = 360;
-const COLUMN_DATASET_HEADER_HEIGHT = 72;
-const COLUMN_DATASET_SUBTITLE_EXTRA_HEIGHT = 24;
+const COLUMN_DATASET_HEADER_HEIGHT = 118;
+const COLUMN_DATASET_SUBTITLE_EXTRA_HEIGHT = 36;
 const COLUMN_DATASET_ROW_HEIGHT = 28;
 const COLUMN_DATASET_BODY_PADDING = 16;
 const MIN_DATASET_VERTICAL_GAP = 220;

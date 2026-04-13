@@ -49,7 +49,9 @@ function DatasetNode({ data }: NodeProps) {
         borderBottom: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
         borderLeft: `3px solid ${accentColor}`,
         borderRadius: '6px',
-        minWidth: '180px',
+        width: '280px',
+        minWidth: '280px',
+        maxWidth: '280px',
         fontFamily: "'Segoe UI', sans-serif",
         boxShadow: isDark
           ? '0 2px 8px rgba(0,0,0,0.3)'
@@ -75,10 +77,14 @@ function DatasetNode({ data }: NodeProps) {
               fontSize: '12px',
               fontWeight: 600,
               color: isDark ? '#FAF9F8' : '#323130',
-              whiteSpace: 'nowrap',
+              lineHeight: '1.35',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: '220px',
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              maxWidth: '240px',
             }}
             title={nodeData.label}
           >
@@ -91,7 +97,13 @@ function DatasetNode({ data }: NodeProps) {
                 fontSize: '10px',
                 color: isDark ? '#A19F9D' : '#605E5C',
                 lineHeight: '1.4',
-                maxWidth: '220px',
+                overflow: 'hidden',
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                maxWidth: '240px',
               }}
               title={nodeData.subtitle}
             >
@@ -190,8 +202,8 @@ function estimateNodeSize(node: Node): { width: number; height: number } {
     const fields = ((node.data as { fields?: string[] }).fields || []).length;
     const subtitle = ((node.data as { subtitle?: string }).subtitle || '').trim();
     return {
-      width: 260,
-      height: 54 + (subtitle ? 24 : 0) + fields * 18 + 24,
+      width: 280,
+      height: 70 + (subtitle ? 30 : 0) + fields * 18 + 24,
     };
   }
 
