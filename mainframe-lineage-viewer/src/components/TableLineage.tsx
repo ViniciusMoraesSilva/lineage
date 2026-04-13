@@ -182,6 +182,9 @@ function JobNode({ data }: NodeProps) {
 
 const nodeTypes = { dataset: DatasetNode, job: JobNode };
 
+const MIN_DATASET_VERTICAL_GAP = 180;
+const MAX_DATASET_VERTICAL_GAP = 360;
+
 function estimateNodeSize(node: Node): { width: number; height: number } {
   if (node.type === 'dataset') {
     const fields = ((node.data as { fields?: string[] }).fields || []).length;
@@ -201,7 +204,14 @@ function estimateNodeSize(node: Node): { width: number; height: number } {
 function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'LR') {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: direction, nodesep: 110, ranksep: 180, marginx: 30, marginy: 30 });
+
+  const datasetHeights = nodes
+    .filter((node) => node.type === 'dataset')
+    .map((node) => node.measured?.height || estimateNodeSize(node).height);
+  const tallestDataset = datasetHeights.length > 0 ? Math.max(...datasetHeights) : 0;
+  const nodesep = Math.max(MIN_DATASET_VERTICAL_GAP, Math.min(tallestDataset * 0.35, MAX_DATASET_VERTICAL_GAP));
+
+  g.setGraph({ rankdir: direction, nodesep, ranksep: 180, marginx: 30, marginy: 30 });
 
   nodes.forEach((node) => {
     const estimated = estimateNodeSize(node);

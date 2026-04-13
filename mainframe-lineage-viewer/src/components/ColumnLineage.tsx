@@ -76,7 +76,9 @@ function ColumnDatasetNode({ data }: NodeProps) {
         borderBottom: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
         borderLeft: `3px solid ${nodeData.accentColor}`,
         borderRadius: '6px',
-        minWidth: '200px',
+        width: `${COLUMN_DATASET_NODE_WIDTH}px`,
+        minWidth: `${COLUMN_DATASET_NODE_WIDTH}px`,
+        maxWidth: `${COLUMN_DATASET_NODE_WIDTH}px`,
         fontFamily: "'Segoe UI', sans-serif",
         boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.08)',
         opacity: hasSelection && nodeData.selectedColumns.length === 0 ? 0.4 : 1,
@@ -113,7 +115,7 @@ function ColumnDatasetNode({ data }: NodeProps) {
                 fontSize: '10px',
                 color: isDark ? '#A19F9D' : '#605E5C',
                 lineHeight: '1.4',
-                maxWidth: '240px',
+                maxWidth: '140px',
               }}
               title={nodeData.subtitle}
             >
@@ -363,6 +365,14 @@ function ColumnDatasetNode({ data }: NodeProps) {
 
 const nodeTypes = { columnDataset: ColumnDatasetNode };
 
+const COLUMN_DATASET_NODE_WIDTH = 360;
+const COLUMN_DATASET_HEADER_HEIGHT = 72;
+const COLUMN_DATASET_SUBTITLE_EXTRA_HEIGHT = 24;
+const COLUMN_DATASET_ROW_HEIGHT = 28;
+const COLUMN_DATASET_BODY_PADDING = 16;
+const MIN_DATASET_VERTICAL_GAP = 220;
+const MAX_DATASET_VERTICAL_GAP = 420;
+
 function getLayoutedElements(nodes: Node[], edges: Edge[]) {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
@@ -370,13 +380,17 @@ function getLayoutedElements(nodes: Node[], edges: Edge[]) {
   const nodeHeights: number[] = [];
   nodes.forEach((node) => {
     const subtitle = ((node.data.subtitle as string | undefined) || '').trim();
-    const height = (node.data.columns as string[]).length * 24 + (subtitle ? 72 : 50);
+    const height =
+      (node.data.columns as string[]).length * COLUMN_DATASET_ROW_HEIGHT +
+      COLUMN_DATASET_HEADER_HEIGHT +
+      (subtitle ? COLUMN_DATASET_SUBTITLE_EXTRA_HEIGHT : 0) +
+      COLUMN_DATASET_BODY_PADDING;
     nodeHeights.push(height);
-    g.setNode(node.id, { width: 260, height });
+    g.setNode(node.id, { width: COLUMN_DATASET_NODE_WIDTH, height });
   });
 
   const maxHeight = nodeHeights.length > 0 ? Math.max(...nodeHeights) : 50;
-  const nodesep = Math.max(80, Math.min(maxHeight * 0.15, 300));
+  const nodesep = Math.max(MIN_DATASET_VERTICAL_GAP, Math.min(maxHeight * 0.35, MAX_DATASET_VERTICAL_GAP));
 
   g.setGraph({ rankdir: 'LR', nodesep, ranksep: 200 });
   edges.forEach((edge) => {
@@ -388,8 +402,12 @@ function getLayoutedElements(nodes: Node[], edges: Edge[]) {
     nodes: nodes.map((node) => {
       const pos = g.node(node.id);
       const subtitle = ((node.data.subtitle as string | undefined) || '').trim();
-      const width = 260;
-      const height = (node.data.columns as string[]).length * 24 + (subtitle ? 72 : 50);
+      const width = COLUMN_DATASET_NODE_WIDTH;
+      const height =
+        (node.data.columns as string[]).length * COLUMN_DATASET_ROW_HEIGHT +
+        COLUMN_DATASET_HEADER_HEIGHT +
+        (subtitle ? COLUMN_DATASET_SUBTITLE_EXTRA_HEIGHT : 0) +
+        COLUMN_DATASET_BODY_PADDING;
       return { ...node, position: { x: pos.x - width / 2, y: pos.y - height / 2 } };
     }),
     edges,

@@ -259,18 +259,21 @@ function parseEvents(events: OpenLineageEvent[]): ParsedLineage {
 export function injectUnfilledFieldSample(data: ParsedLineage): ParsedLineage {
   const persistentDemoField = 'Demo_Laranja_Persistente';
   const recoveredDemoField = 'Demo_Laranja_Vira_Azul';
+  type DatasetKey = `${string}::${string}`;
+  const toDatasetKey = (namespace: string, name: string): DatasetKey => `${namespace}::${name}`;
+  const isDatasetKey = (value: string): value is DatasetKey => value.includes('::');
 
   if (data.datasets.some((dataset) => dataset.schema.some((field) => field.name === persistentDemoField))) {
     return data;
   }
 
   const datasetByKey = new Map(
-    data.datasets.map((dataset) => [`${dataset.namespace}::${dataset.name}`, dataset] as const),
+    data.datasets.map((dataset) => [toDatasetKey(dataset.namespace, dataset.name), dataset] as const),
   );
-  const adjacency = new Map<string, Set<string>>();
+  const adjacency = new Map<DatasetKey, Set<DatasetKey>>();
 
   for (const edge of data.columnLineageEdges) {
-    if (edge.sourceDataset === edge.targetDataset) {
+    if (!isDatasetKey(edge.sourceDataset) || !isDatasetKey(edge.targetDataset) || edge.sourceDataset === edge.targetDataset) {
       continue;
     }
 
@@ -281,14 +284,14 @@ export function injectUnfilledFieldSample(data: ParsedLineage): ParsedLineage {
     adjacency.get(edge.sourceDataset)?.add(edge.targetDataset);
   }
 
-  const findDatasetKeyBySuffix = (suffix: string) =>
-    data.datasets.find((dataset) => dataset.name.endsWith(suffix))
-      ? `${data.datasets.find((dataset) => dataset.name.endsWith(suffix))?.namespace}::${data.datasets.find((dataset) => dataset.name.endsWith(suffix))?.name}`
-      : null;
+  const findDatasetKeyBySuffix = (suffix: string): DatasetKey | null => {
+    const dataset = data.datasets.find((candidate) => candidate.name.endsWith(suffix));
+    return dataset ? toDatasetKey(dataset.namespace, dataset.name) : null;
+  };
 
-  let middleDatasetKey: string | null = findDatasetKeyBySuffix('/products_enriched');
-  let downstreamDatasetKey: string | null = findDatasetKeyBySuffix('/sales_enriched');
-  let resolvedDatasetKey: string | null = findDatasetKeyBySuffix('/customer_lifetime_value');
+  let middleDatasetKey: DatasetKey | null = findDatasetKeyBySuffix('/products_enriched');
+  let downstreamDatasetKey: DatasetKey | null = findDatasetKeyBySuffix('/sales_enriched');
+  let resolvedDatasetKey: DatasetKey | null = findDatasetKeyBySuffix('/customer_lifetime_value');
 
   const preferredChainIsValid =
     middleDatasetKey &&
@@ -357,7 +360,7 @@ export function injectUnfilledFieldSample(data: ParsedLineage): ParsedLineage {
   const resolvedDataset = resolvedDatasetKey ? datasetByKey.get(resolvedDatasetKey) : null;
 
   const fallbackSourceDataset = data.datasets.find((dataset) => {
-    const datasetKey = `${dataset.namespace}::${dataset.name}`;
+    const datasetKey = toDatasetKey(dataset.namespace, dataset.name);
     return dataset.role === 'source' && datasetKey !== middleDatasetKey && datasetKey !== downstreamDatasetKey;
   });
 
@@ -366,13 +369,13 @@ export function injectUnfilledFieldSample(data: ParsedLineage): ParsedLineage {
   }
 
   const datasets = data.datasets.map((dataset) => {
-    const datasetKey = `${dataset.namespace}::${dataset.name}`;
+    const datasetKey = toDatasetKey(dataset.namespace, dataset.name);
 
     if (
       datasetKey !== middleDatasetKey &&
       datasetKey !== downstreamDatasetKey &&
       datasetKey !== resolvedDatasetKey &&
-      datasetKey !== (fallbackSourceDataset ? `${fallbackSourceDataset.namespace}::${fallbackSourceDataset.name}` : null)
+      datasetKey !== (fallbackSourceDataset ? toDatasetKey(fallbackSourceDataset.namespace, fallbackSourceDataset.name) : null)
     ) {
       return dataset;
     }
@@ -401,7 +404,7 @@ export function injectUnfilledFieldSample(data: ParsedLineage): ParsedLineage {
         },
       ];
 
-    if (fallbackSourceDataset && datasetKey === `${fallbackSourceDataset.namespace}::${fallbackSourceDataset.name}`) {
+    if (fallbackSourceDataset && datasetKey === toDatasetKey(fallbackSourceDataset.namespace, fallbackSourceDataset.name)) {
       return {
         ...dataset,
         schema: dataset.schema.some((field) => field.name === recoveredDemoField)
