@@ -140,7 +140,7 @@ function ColumnDatasetNode({ data }: NodeProps) {
               ? '#0078D4'
               : resolvedTraceableColumns.length === 0
                 ? isDark ? '#605E5C' : '#A19F9D'
-              : isDark ? '#A19F9D' : '#605E5C',
+                : isDark ? '#A19F9D' : '#605E5C',
             lineHeight: 1.2,
             flexShrink: 0,
             opacity: resolvedTraceableColumns.length === 0 ? 0.55 : 1,
@@ -257,9 +257,9 @@ function ColumnDatasetNode({ data }: NodeProps) {
                     ? isDark ? '#605E5C' : '#A19F9D'
                     : isUnfilled
                       ? isDark ? '#FFD7B5' : '#8A3700'
-                    : isHighlighted
-                      ? isDark ? '#FAF9F8' : '#323130'
-                      : isDark ? '#A19F9D' : '#605E5C',
+                      : isHighlighted
+                        ? isDark ? '#FAF9F8' : '#323130'
+                        : isDark ? '#A19F9D' : '#605E5C',
                 backgroundColor: isSelected
                   ? selectedAccent
                   : isDimmed
@@ -268,9 +268,9 @@ function ColumnDatasetNode({ data }: NodeProps) {
                       ? isDark ? 'rgba(216,59,1,0.20)' : 'rgba(216,59,1,0.12)'
                       : isUnfilled
                         ? semanticBackground
-                      : isHighlighted
-                        ? isDark ? 'rgba(0,120,212,0.15)' : 'rgba(0,120,212,0.08)'
-                        : 'transparent',
+                        : isHighlighted
+                          ? isDark ? 'rgba(0,120,212,0.15)' : 'rgba(0,120,212,0.08)'
+                          : 'transparent',
                 position: 'relative',
                 transition: 'background-color 0.15s, color 0.15s',
                 borderRadius: isSelected ? '3px' : '0',
