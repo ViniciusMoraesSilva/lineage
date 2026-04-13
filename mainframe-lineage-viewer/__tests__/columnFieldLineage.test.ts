@@ -124,6 +124,21 @@ describe('computeColumnFieldLineageStatus', () => {
         expect(statuses['file::table_ref::real_flag']).toBe('resolved');
     });
 
+    it('keeps propagating unfilled fields even when merged bundles leave the dataset role as source', () => {
+        const lineage = makeLineage();
+        lineage.datasets = lineage.datasets.map((dataset) => (
+            dataset.name === 'table_b' || dataset.name === 'table_c'
+                ? { ...dataset, role: 'source' }
+                : dataset
+        ));
+
+        const statuses = computeColumnFieldLineageStatus(lineage);
+
+        expect(statuses['file::table_b::ghost_flag']).toBe('unfilled');
+        expect(statuses['file::table_c::ghost_flag']).toBe('unfilled');
+        expect(statuses['file::table_d::ghost_flag']).toBe('resolved');
+    });
+
     it('keeps the public JCLDB001 sample didactic field unfilled in E006 and resolved in E007 via conditional hard code', () => {
         const parsed = parseCanonicalBundle({
             entities: readSampleFile('entities.csv'),

@@ -23,6 +23,7 @@ export function computeColumnFieldLineageStatus(
     data: LineageSubset,
 ): Record<string, ColumnFieldLineageStatus> {
     const datasetRoleByKey = new Map<string, ParsedLineage['datasets'][number]['role']>();
+    const datasetsWithIncomingLineage = new Set<string>();
     const incomingByField = new Map<string, string[]>();
     const sourceFieldKeys = new Set<string>();
     const targetFieldKeys = new Set<string>();
@@ -45,6 +46,7 @@ export function computeColumnFieldLineageStatus(
         allFieldKeys.add(targetKey);
         sourceFieldKeys.add(sourceKey);
         targetFieldKeys.add(targetKey);
+        datasetsWithIncomingLineage.add(edge.targetDataset);
 
         const existingIncoming = incomingByField.get(targetKey);
         if (existingIncoming) {
@@ -75,8 +77,11 @@ export function computeColumnFieldLineageStatus(
         if (incoming.length === 0) {
             const { datasetKey } = splitColumnFieldKey(fieldKey);
             const role = datasetRoleByKey.get(datasetKey);
+            const datasetHasIncomingLineage = datasetsWithIncomingLineage.has(datasetKey);
 
-            if (role === 'source') {
+            if (!datasetHasIncomingLineage && role === 'source') {
+                resolvedStatus = 'resolved';
+            } else if (!datasetHasIncomingLineage) {
                 resolvedStatus = 'resolved';
             } else if (!role && sourceFieldKeys.has(fieldKey) && !targetFieldKeys.has(fieldKey)) {
                 resolvedStatus = 'resolved';
