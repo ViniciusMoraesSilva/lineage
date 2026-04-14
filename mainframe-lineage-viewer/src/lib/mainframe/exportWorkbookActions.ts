@@ -6,27 +6,27 @@ export const MAINFRAME_DETAILED_EXCEL_LABEL = 'Exportar Excel detalhado';
 export const MAINFRAME_CLASSIFICATION_EXCEL_LABEL = 'Exportar Excel de classificacao';
 
 export function getMainframeExportHelperText(selectedFieldsCount: number): string {
-  if (selectedFieldsCount > 0) {
-    return 'Excel detalhado: linhagem e regras dos campos selecionados. Excel de classificacao: responde origem, hard code e gerado no fluxo para a selecao atual.';
-  }
+    if (selectedFieldsCount > 0) {
+        return 'Excel detalhado: linhagem e regras dos campos selecionados. Excel de classificacao: responde origem, hard code e gerado no fluxo para a selecao atual.';
+    }
 
-  return 'Excel de classificacao: responde origem, hard code e gerado no fluxo para os campos visiveis do filtro JCL atual.';
+    return 'Excel de classificacao: responde origem, hard code e gerado no fluxo para os campos visiveis do filtro JCL atual.';
 }
 
 export function exportDetailedLineageWorkbook(
-  data: ParsedLineage,
-  selectedFields: ClassificationFieldSelection[],
+    data: ParsedLineage,
+    selectedFields: ClassificationFieldSelection[],
 ): void {
-  if (selectedFields.length === 0) {
-    return;
-  }
+    if (selectedFields.length === 0) {
+        return;
+    }
 
-  exportLineageExcel(data, selectedFields);
+    exportLineageExcel(data, selectedFields);
 }
 
 export function exportExecutiveClassificationWorkbook(
-  data: ParsedLineage,
-  selectedFields: ClassificationFieldSelection[],
+    data: ParsedLineage,
+    selectedFields: ClassificationFieldSelection[],
 ): void {
-  exportClassificationExcel(data, { selectedFields });
+    exportClassificationExcel(data, { selectedFields });
 }
