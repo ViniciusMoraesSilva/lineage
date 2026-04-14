@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -17,6 +17,14 @@ import {
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
 import { useThemeContext } from './ThemeProvider';
+import {
+  createLineageFullscreenRefitCallback,
+  getLineageFullscreenButtonLabel,
+  getLineageFullscreenButtonStyle,
+  getLineageFullscreenButtonTitle,
+  getLineageFullscreenPanelStyle,
+} from './lineageFullscreenPanel';
+import { useLineageFullscreen } from './useLineageFullscreen';
 import { ParsedLineage } from '@/lib/types';
 
 interface TableLineageProps {
@@ -285,8 +293,36 @@ function ResetLayoutButton({ initialNodes }: { initialNodes: Node[] }) {
   );
 }
 
+function FullscreenButton({
+  isDark,
+  isFullscreen,
+  isFullscreenSupported,
+  onToggle,
+}: {
+  isDark: boolean;
+  isFullscreen: boolean;
+  isFullscreenSupported: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      title={getLineageFullscreenButtonTitle(isFullscreen)}
+      aria-pressed={isFullscreen}
+      disabled={!isFullscreenSupported}
+      style={getLineageFullscreenButtonStyle({ isDark, isFullscreenSupported })}
+    >
+      {getLineageFullscreenButtonLabel(isFullscreen)}
+    </button>
+  );
+}
+
 const TableLineage = ({ data }: TableLineageProps) => {
   const { isDark } = useThemeContext();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const reactFlowRef = useRef<{
+    fitView: (options?: { padding?: number; duration?: number }) => void;
+  } | null>(null);
 
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const nodes: Node[] = [];
@@ -349,6 +385,23 @@ const TableLineage = ({ data }: TableLineageProps) => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 
+  const handleFullscreenChange = useCallback(
+    createLineageFullscreenRefitCallback(reactFlowRef),
+    [],
+  );
+
+  const { isFullscreen, isFullscreenSupported, toggleFullscreen } = useLineageFullscreen({
+    containerRef,
+    onFullscreenChange: handleFullscreenChange,
+  });
+
+  const handleReactFlowInit = useCallback((instance: {
+    fitView: (options?: { padding?: number; duration?: number }) => void;
+  }) => {
+    reactFlowRef.current = instance;
+    instance.fitView({ padding: 0.2 });
+  }, []);
+
   useEffect(() => {
     setNodes(initialNodes);
   }, [initialNodes, setNodes]);
@@ -378,14 +431,12 @@ const TableLineage = ({ data }: TableLineageProps) => {
         </p>
       </div>
       <div
-        style={{
-          height: '500px',
-          backgroundColor: isDark ? '#201F1E' : '#FAF9F8',
-          border: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
-          borderRadius: '8px',
-          overflow: 'hidden',
-          position: 'relative',
-        }}
+        ref={containerRef}
+        style={getLineageFullscreenPanelStyle({
+          isFullscreen,
+          isDark,
+          defaultHeight: '500px',
+        })}
       >
         <ReactFlow
           nodes={nodes}
@@ -397,7 +448,16 @@ const TableLineage = ({ data }: TableLineageProps) => {
           minZoom={0.3}
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
+          onInit={handleReactFlowInit}
         >
+          <FullscreenButton
+            isDark={isDark}
+            isFullscreen={isFullscreen}
+            isFullscreenSupported={isFullscreenSupported}
+            onToggle={() => {
+              void toggleFullscreen();
+            }}
+          />
           <ResetLayoutButton initialNodes={initialNodes} />
           <Background color={isDark ? '#323130' : '#EDEBE9'} gap={20} size={1} />
           <Controls

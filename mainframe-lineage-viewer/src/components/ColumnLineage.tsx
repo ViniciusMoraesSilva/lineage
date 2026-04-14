@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useCallback, useEffect, useDeferredValue } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useDeferredValue, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -17,6 +17,14 @@ import {
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
 import { useThemeContext } from './ThemeProvider';
+import {
+  createLineageFullscreenRefitCallback,
+  getLineageFullscreenButtonLabel,
+  getLineageFullscreenButtonStyle,
+  getLineageFullscreenButtonTitle,
+  getLineageFullscreenPanelStyle,
+} from './lineageFullscreenPanel';
+import { useLineageFullscreen } from './useLineageFullscreen';
 import { ParsedLineage, ColumnLineageEdge, ParsedDataset } from '@/lib/types';
 import {
   buildColumnFieldKey,
@@ -564,8 +572,36 @@ function ResetLayoutButton({ initialNodes }: { initialNodes: Node[] }) {
   );
 }
 
+function FullscreenButton({
+  isDark,
+  isFullscreen,
+  isFullscreenSupported,
+  onToggle,
+}: {
+  isDark: boolean;
+  isFullscreen: boolean;
+  isFullscreenSupported: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      title={getLineageFullscreenButtonTitle(isFullscreen)}
+      aria-pressed={isFullscreen}
+      disabled={!isFullscreenSupported}
+      style={getLineageFullscreenButtonStyle({ isDark, isFullscreenSupported })}
+    >
+      {getLineageFullscreenButtonLabel(isFullscreen)}
+    </button>
+  );
+}
+
 const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
   const { isDark } = useThemeContext();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const reactFlowRef = useRef<{
+    fitView: (options?: { padding?: number; duration?: number }) => void;
+  } | null>(null);
   const [selectedColumns, setSelectedColumns] = useState<Array<{ datasetKey: string; field: string }>>([]);
   const [columnFilter, setColumnFilter] = useState('');
   const [transformationFilter, setTransformationFilter] = useState('');
@@ -940,6 +976,23 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 
+  const handleFullscreenChange = useCallback(
+    createLineageFullscreenRefitCallback(reactFlowRef),
+    [],
+  );
+
+  const { isFullscreen, isFullscreenSupported, toggleFullscreen } = useLineageFullscreen({
+    containerRef,
+    onFullscreenChange: handleFullscreenChange,
+  });
+
+  const handleReactFlowInit = useCallback((instance: {
+    fitView: (options?: { padding?: number; duration?: number }) => void;
+  }) => {
+    reactFlowRef.current = instance;
+    instance.fitView({ padding: 0.2 });
+  }, []);
+
   useEffect(() => {
     setNodes(initialNodes);
   }, [initialNodes, setNodes]);
@@ -964,6 +1017,39 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
   const renderEdges = useMemo(() => {
     return finalEdges;
   }, [finalEdges]);
+
+  const autoFitFilterSignature = useMemo(
+    () => JSON.stringify({
+      transformationFilter,
+      columnNameFilters,
+      deferredColumnNameInput: deferredColumnNameInput.trim().toLowerCase(),
+      columnFilter: columnFilter.trim().toLowerCase(),
+      nodeCount: renderNodes.length,
+      edgeCount: renderEdges.length,
+    }),
+    [transformationFilter, columnNameFilters, deferredColumnNameInput, columnFilter, renderNodes.length, renderEdges.length],
+  );
+
+  const lastAutoFitFilterSignatureRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (lastAutoFitFilterSignatureRef.current === null) {
+      lastAutoFitFilterSignatureRef.current = autoFitFilterSignature;
+      return;
+    }
+
+    if (lastAutoFitFilterSignatureRef.current === autoFitFilterSignature) {
+      return;
+    }
+
+    lastAutoFitFilterSignatureRef.current = autoFitFilterSignature;
+
+    const timeoutId = setTimeout(() => {
+      reactFlowRef.current?.fitView({ padding: 0.2, duration: 300 });
+    }, 50);
+
+    return () => clearTimeout(timeoutId);
+  }, [autoFitFilterSignature]);
 
   return (
     <section data-export-target="column-lineage" style={{ padding: '0 24px 32px', maxWidth: '1600px', margin: '0 auto' }}>
@@ -998,7 +1084,30 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           Click any column to trace its full lineage upstream and downstream. Click the background to
           deselect. Colunas em azul possuem upstream resolvido; colunas em laranja indicam campos criados localmente que seguem sem upstream preenchido. Quando `steps.csv` estiver presente, as arestas mostram tambem o step relacionado.
         </p>
-        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+      </div>
+      <div
+        ref={containerRef}
+        style={{
+          ...getLineageFullscreenPanelStyle({
+            isFullscreen,
+            isDark,
+            defaultHeight: 'auto',
+          }),
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div
+          style={{
+            marginTop: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'wrap',
+            padding: '12px 16px',
+            borderBottom: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
+          }}
+        >
           <select
             value={transformationFilter}
             onChange={(event) => setTransformationFilter(event.target.value)}
@@ -1146,17 +1255,14 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
             Busca destaca a coluna em laranja. O filtro de transformacao recorta o grafo para `copia_identidade`, `busca_valor`, `constante_condicional` e similares.
           </span>
         </div>
-      </div>
-      <div
-        style={{
-          height: '600px',
-          backgroundColor: isDark ? '#201F1E' : '#FAF9F8',
-          border: `1px solid ${isDark ? '#323130' : '#EDEBE9'}`,
-          borderRadius: '8px',
-          overflow: 'hidden',
-          position: 'relative',
-        }}
-      >
+        <div
+          style={{
+            position: 'relative',
+            flex: isFullscreen ? '1 1 auto' : undefined,
+            minHeight: isFullscreen ? 0 : undefined,
+            height: isFullscreen ? '100%' : '600px',
+          }}
+        >
         <ReactFlow
           nodes={renderNodes}
           edges={renderEdges}
@@ -1168,7 +1274,16 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
           onPaneClick={handlePaneClick}
+          onInit={handleReactFlowInit}
         >
+          <FullscreenButton
+            isDark={isDark}
+            isFullscreen={isFullscreen}
+            isFullscreenSupported={isFullscreenSupported}
+            onToggle={() => {
+              void toggleFullscreen();
+            }}
+          />
           <ResetLayoutButton initialNodes={initialNodes} />
           <Background color={isDark ? '#323130' : '#EDEBE9'} gap={20} size={1} />
           <Controls
@@ -1180,6 +1295,7 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
             }}
           />
         </ReactFlow>
+        </div>
       </div>
     </section>
   );

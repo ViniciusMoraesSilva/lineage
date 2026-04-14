@@ -1,0 +1,339 @@
+plan_id: mainframe-lineage-fullscreen
+objective: |
+  Adicionar um botao de fullscreen para Table-Level Lineage e Column-Level
+  Lineage, permitindo que cada visualizacao ocupe a tela inteira quando o
+  usuario desejar ampliar o grafo. O fluxo deve ser simples: clicar no botao
+  entra em tela cheia, o grafo se reajusta para o novo viewport e o usuario
+  consegue sair com o proprio botao ou com ESC, sem quebrar o layout atual.
+created_at: "2026-04-13"
+created_by: gem-planner
+status: completed
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 4
+  risk_score: medium
+
+tldr: |
+  Plano medio em 4 tarefas e 3 waves. Primeiro criar um contrato reutilizavel
+  de fullscreen para os paineis de lineage, encapsulando requestFullscreen,
+  exitFullscreen, fullscreenchange, estado visual e refit do React Flow. Depois
+  integrar esse comportamento separadamente em Table-Level e Column-Level,
+  preservando os botoes atuais de reset e zoom. Por fim, validar em navegador
+  que as duas views entram e saem de fullscreen corretamente, ampliam a area do
+  grafo e continuam usaveis com ESC e reset de layout.
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: "O painel entra em fullscreen, mas o React Flow mantem o zoom/layout antigo e o grafo continua pequeno"
+      likelihood: medium
+      impact: high
+      mitigation: "Disparar fitView apos fullscreenchange e apos sair de fullscreen, com pequeno delay para garantir dimensoes finais do container"
+    - scenario: "O botao funciona em uma view e diverge na outra, gerando duplicacao de comportamento e bugs de manutencao"
+      likelihood: medium
+      impact: medium
+      mitigation: "Extrair um wrapper ou hook compartilhado para a logica de fullscreen, com contrato unico consumido por TableLineage e ColumnLineage"
+    - scenario: "O navegador negar fullscreen ou o ambiente nao suportar a API, deixando a UI sem resposta"
+      likelihood: low
+      impact: medium
+      mitigation: "Usar document.fullscreenEnabled/document.fullscreenElement, tratar Promise rejeitada e manter fallback gracioso sem quebrar o painel"
+  assumptions:
+    - "O escopo cobre apenas as views Table-Level Lineage e Column-Level Lineage do viewer mainframe"
+    - "A Fullscreen API nativa do navegador e suficiente; nao e necessario adicionar dependencia externa"
+    - "O comportamento esperado de saida com ESC segue a Fullscreen API nativa e deve ser refletido na UI"
+    - "Nao existe PRD.yaml no repositorio; o pedido do usuario e a fonte de verdade para este escopo"
+
+implementation_specification:
+  code_structure: |
+    A implementacao deve concentrar a logica de fullscreen em um ponto
+    reutilizavel, preferencialmente um wrapper visual ou hook compartilhado para
+    paines ReactFlow. Esse contrato deve receber uma ref do container, expor um
+    botao de alternancia, observar o evento fullscreenchange e disparar refit do
+    grafo quando a area util mudar. TableLineage e ColumnLineage devem usar esse
+    contrato sobre seus containers atuais, preservando Resetar layout, Controls,
+    Background e o estilo visual existente. O estado fullscreen deve alterar a
+    altura do painel para viewport cheia e exibir affordance clara para sair com
+    ESC ou com o proprio botao.
+  affected_areas:
+    - mainframe-lineage-viewer/src/components/TableLineage.tsx
+    - mainframe-lineage-viewer/src/components/ColumnLineage.tsx
+    - mainframe-lineage-viewer/src/components
+  component_details:
+    - component: Contrato compartilhado de fullscreen
+      responsibility: "Encapsular requestFullscreen, exitFullscreen, sincronizacao de estado, listeners de fullscreenchange e callback de refit"
+      interfaces:
+        - "API para alternar fullscreen de um container especifico"
+        - "Estado booleano isFullscreen para ajustar label, titulo e estilo do botao"
+        - "Callback de onFullscreenChange para recalcular fitView do ReactFlow"
+    - component: Table-Level Lineage
+      responsibility: "Adicionar o botao de fullscreen ao painel de tabelas e ampliar o container para ocupacao total da tela"
+      interfaces:
+        - "Botao visivel no canto superior do painel junto aos controles atuais"
+        - "Container ReactFlow capaz de expandir para viewport em fullscreen"
+    - component: Column-Level Lineage
+      responsibility: "Adicionar o botao de fullscreen ao painel de colunas, preservando filtros, reset e interacao com campos"
+      interfaces:
+        - "Botao visivel no painel sem conflitar com filtros e Resetar layout"
+        - "Container ReactFlow em fullscreen com area ampliada para leitura de cards e arestas"
+    - component: Validacao de experiencia
+      responsibility: "Confirmar comportamento real em navegador, incluindo entrada, saida, ESC, refit e ausencia de regressao"
+      interfaces:
+        - "Cenarios browser-based para Table-Level e Column-Level"
+  dependencies:
+    - component: ReactFlow via @xyflow/react
+      relationship: "Precisa receber refit/fitView quando o container muda de tamanho em fullscreen"
+    - component: Fullscreen API do navegador
+      relationship: "Fornece requestFullscreen, exitFullscreen, fullscreenElement, fullscreenEnabled e fullscreenchange"
+    - component: ResetLayoutButton
+      relationship: "Permanece disponivel no painel e deve coexistir com o novo botao de fullscreen"
+  integration_points:
+    - "Os containers atuais dos graficos em TableLineage e ColumnLineage ja sao wrappers posicionados relative e sao o ponto ideal para requestFullscreen"
+    - "A mudanca precisa respeitar o tema claro/escuro ja aplicado aos botoes e paines"
+    - "Fullscreen deve conviver com fitView, zoom, reset de layout e filtros do Column-Level"
+
+contracts:
+  - from_task: T1
+    to_task: T2
+    interface: "Contrato compartilhado de fullscreen com API de toggle, estado e callback de refit"
+    format: "Hook ou wrapper reutilizavel em componente TypeScript"
+  - from_task: T1
+    to_task: T3
+    interface: "Mesmo contrato compartilhado de fullscreen, reutilizavel no painel de colunas"
+    format: "Hook ou wrapper reutilizavel em componente TypeScript"
+  - from_task: T2
+    to_task: T4
+    interface: "Table-Level com fullscreen integrado e botao funcional"
+    format: "Painel ReactFlow renderizado no navegador"
+  - from_task: T3
+    to_task: T4
+    interface: "Column-Level com fullscreen integrado e botao funcional"
+    format: "Painel ReactFlow renderizado no navegador"
+
+tasks:
+  - id: T1
+    title: "Definir contrato compartilhado de fullscreen"
+    description: |
+      Criar a base reutilizavel para fullscreen dos paines de lineage. A tarefa
+      deve decidir e implementar o ponto unico de logica para entrar e sair de
+      tela cheia, escutar fullscreenchange, refletir o estado atual no botao e
+      disparar um callback para refit do ReactFlow quando o viewport mudar.
+      O objetivo e evitar duplicacao entre TableLineage e ColumnLineage.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/src/components/TableLineage.tsx
+        description: "Referencia do painel de tabelas e do botao Resetar layout"
+      - path: mainframe-lineage-viewer/src/components/ColumnLineage.tsx
+        description: "Referencia do painel de colunas, filtros e controles atuais"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 160
+    focus_area: fullscreen-contract
+    verification:
+      - "Existe um ponto compartilhado para a logica requestFullscreen/exitFullscreen"
+      - "O estado isFullscreen responde a fullscreenchange e nao depende apenas do click local"
+      - "Ha callback ou mecanismo claro para refit do ReactFlow apos entrar/sair de fullscreen"
+    acceptance_criteria:
+      - "A logica de fullscreen nao fica duplicada integralmente nas duas views"
+      - "Falhas da Fullscreen API sao tratadas sem quebrar a UI"
+      - "O contrato suporta reuso por Table-Level e Column-Level"
+    failure_modes:
+      - scenario: "A logica usar apenas estado local e ficar dessincronizada quando o usuario sair com ESC"
+        likelihood: medium
+        impact: high
+        mitigation: "Ouvir fullscreenchange e derivar o estado real a partir de document.fullscreenElement"
+    tech_stack:
+      - React 18
+      - Next.js 15.1.0
+      - Fullscreen API
+      - "@xyflow/react 12.4.4"
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T2
+    title: "Integrar fullscreen no Table-Level Lineage"
+    description: |
+      Aplicar o contrato de fullscreen ao painel Table-Level Lineage. O botao
+      deve ficar visivel e coerente com o estilo atual, permitir entrada e saida
+      de tela cheia e ampliar o container do ReactFlow para melhor leitura do
+      grafo de tabelas e jobs. O painel precisa continuar oferecendo reset e
+      controles de zoom em fullscreen.
+    wave: 2
+    agent: gem-implementer
+    priority: medium
+    status: completed
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/src/components/TableLineage.tsx
+        description: "Painel de tabelas que recebera o botao e o comportamento fullscreen"
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 120
+    focus_area: table-lineage-fullscreen
+    verification:
+      - "Existe botao de fullscreen no painel Table-Level"
+      - "Ao entrar em fullscreen o container amplia e o grafo faz refit"
+      - "Ao sair com ESC ou com o botao o painel volta ao tamanho original sem regressao visual"
+    acceptance_criteria:
+      - "Table-Level fica legivel em tela cheia"
+      - "Resetar layout e controles permanecem funcionais em fullscreen"
+      - "O tema claro/escuro do painel continua consistente"
+    failure_modes:
+      - scenario: "O botao entra em fullscreen mas o container mantem altura fixa de 500px e desperdiça a viewport"
+        likelihood: medium
+        impact: medium
+        mitigation: "Ajustar altura do container conforme isFullscreen, ocupando a viewport util"
+    tech_stack:
+      - ReactFlow
+      - Fullscreen API
+      - Inline styles existentes do viewer
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T3
+    title: "Integrar fullscreen no Column-Level Lineage"
+    description: |
+      Aplicar o mesmo contrato de fullscreen ao painel Column-Level Lineage,
+      garantindo compatibilidade com filtros, selecao de campos, reset de
+      layout e densidade maior de cards/arestas. O botao precisa melhorar a
+      leitura do grafo sem conflitar com os controles existentes do painel.
+    wave: 2
+    agent: gem-implementer
+    priority: medium
+    status: completed
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/src/components/ColumnLineage.tsx
+        description: "Painel de colunas com filtros, selecao, reset e maior densidade visual"
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 140
+    focus_area: column-lineage-fullscreen
+    verification:
+      - "Existe botao de fullscreen no painel Column-Level"
+      - "Os filtros e chips continuam acessiveis em modo normal e em fullscreen"
+      - "O grafo faz refit apos entrar e sair de tela cheia"
+    acceptance_criteria:
+      - "Column-Level fica mais legivel em tela cheia"
+      - "Nenhum filtro ou controle atual deixa de funcionar"
+      - "O botao nao bagunca o header ja ajustado para nomes longos"
+    failure_modes:
+      - scenario: "Fullscreen deslocar ou sobrepor os controles de filtro do Column-Level"
+        likelihood: medium
+        impact: medium
+        mitigation: "Promover a fullscreen um wrapper unico com barra de filtros/chips e area do grafo, mantendo o botao sobre o grafo e validando com amostra real"
+    tech_stack:
+      - ReactFlow
+      - Fullscreen API
+      - Inline styles existentes do viewer
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T4
+    title: "Validar fullscreen no navegador"
+    description: |
+      Executar validacao browser-based das duas views para confirmar que o botao
+      entra em fullscreen, o grafo reocupa a area ampliada, o usuario consegue
+      sair com ESC e com o proprio botao, e nao ha regressao nos controles
+      existentes. A validacao deve cobrir ao menos a amostra JCLDB001.
+    wave: 3
+    agent: gem-browser-tester
+    priority: medium
+    status: completed
+    dependencies:
+      - T2
+      - T3
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/src/components/TableLineage.tsx
+        description: "View de tabelas a validar em fullscreen"
+      - path: mainframe-lineage-viewer/src/components/ColumnLineage.tsx
+        description: "View de colunas a validar em fullscreen"
+      - path: mainframe-lineage-viewer/src/app/mainframe/page.tsx
+        description: "Pagina que hospeda os dois paines e a carga da amostra"
+    estimated_effort: small
+    estimated_files: 1
+    estimated_lines: 0
+    focus_area: browser-validation
+    verification:
+      - "Fullscreen abre e fecha no Table-Level"
+      - "Fullscreen abre e fecha no Column-Level"
+      - "ESC sai de fullscreen nas duas views"
+      - "Resetar layout e zoom continuam funcionais"
+    acceptance_criteria:
+      - "O usuario consegue ampliar qualquer um dos dois grafos para leitura confortavel"
+      - "Nao ha erros de console ou travas ao alternar fullscreen"
+      - "A experiencia continua boa em tema claro/escuro existente"
+    failure_modes:
+      - scenario: "A validacao passar no click, mas o grafo continuar pequeno por falta de refit apos resize"
+        likelihood: medium
+        impact: medium
+        mitigation: "Registrar evidencia visual e medir o viewport do ReactFlow antes/depois da alternancia"
+    tech_stack:
+      - Browser automation
+      - Fullscreen API
+      - Next.js static app
+    test_coverage: manual-e2e
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Fullscreen do Table-Level"
+        steps:
+          - "Abrir /mainframe"
+          - "Carregar a amostra JCLDB001"
+          - "Clicar no botao de fullscreen do Table-Level"
+          - "Verificar ampliacao do painel e usar ESC para sair"
+        expected_result: "O grafo ocupa a tela cheia, refaz o ajuste visual e retorna ao tamanho original sem erro"
+      - scenario: "Fullscreen do Column-Level"
+        steps:
+          - "Abrir /mainframe"
+          - "Carregar a amostra JCLDB001"
+          - "Clicar no botao de fullscreen do Column-Level"
+          - "Verificar ampliacao do painel, legibilidade do grafo e saida com ESC"
+        expected_result: "O grafo de colunas ocupa a tela cheia, melhora a leitura e volta ao estado normal sem perder filtros ou controles"
+    environment: local-browser
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
