@@ -1,0 +1,6 @@
+{
+  "github.copilot.chat.agent.enabled": true,
+  "github.copilot.chat.agent.runTasks": true,
+  "chat.tools.enabled": true,
+  "github.copilot.chat.codesearch.enabled": true
+}
