@@ -54,7 +54,13 @@ flowchart TD
 
 Esta documentacao descreve o comportamento de negocio inferido a partir dos artefatos reais de `JCLDB001`: JCL, COBOL, copybooks e DCLGEN. Para demonstracao do viewer, existe tambem um acrescimo controlado na amostra publica carregada pelo botao `Carregar amostra JCLDB001`, servida a partir de `mainframe-lineage-viewer/public/mainframe-sample`.
 
-O campo demonstrativo criado nessa amostra chama-se `OUT-DEMO-FALLBACK`. Ele foi introduzido apenas para mostrar um caso visual de `unfilled -> resolved`: em `&&TMPOUT03` o campo existe no schema mas nao recebe upstream real; em `APP.ARQ.SAIDA.CBLDB001` ele e propagado e depois resolvido pela regra condicional `IF OUT-DEMO-FALLBACK = ' ' THEN 'LATE_FILL_DEMO' ELSE OUT-DEMO-FALLBACK`.
+Essa camada didatica agora usa uma familia controlada de campos com prefixo `DEMO-`: `DEMO-ID`, `DEMO-ORD`, `DEMO-ENR`, `DEMO-LKP`, `DEMO-KEY`, `DEMO-CALC`, `DEMO-DER`, `DEMO-COND`, `DEMO-FIXO`, `DEMO-RAW`, `DEMO-NULL1`, `DEMO-NULL2` e `DEMO-FILL`. Os nomes curtos fazem parte da convencao final da amostra para manter a leitura legivel em tela e evitar regressao para rotulos longos demais.
+
+Na leitura correta da demo, os campos `DEMO-ID` ate `DEMO-RAW` continuam sendo a cobertura didatica principal da taxonomia padronizada do viewer. Ja `DEMO-NULL1`, `DEMO-NULL2` e `DEMO-FILL` formam a trilha `null/unfilled`: primeiro o campo nasce sem upstream real, depois continua vazio na propagacao e, por fim, volta a ficar resolvido apenas na etapa final.
+
+Para evitar ambiguidade: na matriz didatica, essa trilha null segue descrita por `null_status`; ja no bundle canonico materializado, `DEMO-NULL2` reutiliza `copia_identidade` para propagar o vazio e `DEMO-FILL` reutiliza `copia_identidade` seguido de `constante_condicional` para resolver o campo no ultimo passo. Isso nao amplia a taxonomia nem cria subtipos narrativos novos; apenas usa subtipos padronizados existentes para que a narrativa visual apareca no lineage real da amostra.
+
+Essa trilha deve ser lida como narrativa visual controlada, nao como descricao literal de tres regras reais do job.
 
 Esse trecho nao deve ser interpretado como extracao literal de uma regra de negocio real do COBOL ou do JCL. No fluxo real documentado abaixo, o STEP040 apenas preserva a saida do STEP030 e injeta o identificador tecnico `JCLBATCH01` em `OUT-HARD-JCL`.
 
@@ -261,14 +267,29 @@ nível de confiança: alto
 - valor de saída no exemplo: JCLBATCH01
 - nível de confiança: alto
 
-### Campo demonstrativo da amostra do viewer: OUT-DEMO-FALLBACK
+### Campos demonstrativos da amostra do viewer: familia DEMO
 
-- status nesta documentacao: campo didatico de demonstracao, fora do conjunto de regras reais inferidas do job
-- dataset de demonstracao: `&&TMPOUT03` e `APP.ARQ.SAIDA.CBLDB001` na copia publica servida pelo viewer
-- papel na demonstracao: expor um campo que aparece sem upstream resolvido na etapa intermediaria e passa a ficar resolvido na etapa final
-- regra demonstrativa aplicada na saida final: `IF OUT-DEMO-FALLBACK = ' ' THEN 'LATE_FILL_DEMO' ELSE OUT-DEMO-FALLBACK`
-- leitura correta: usar esse campo para explicar o comportamento visual do lineage, nao para descrever uma regra real de negocio do `JCLDB001`
-- nível de confiança: alto
+- status nesta documentacao: campos didaticos de demonstracao, fora do conjunto de regras reais inferidas do job
+- dataset de demonstracao: a familia `DEMO-*` vive na copia publica servida pelo viewer entre `&&TMPOUT03` e `APP.ARQ.SAIDA.CBLDB001`, preservando a espinha dorsal do fluxo real sem se passar por extracao literal
+- papel na demonstracao: `DEMO-ID` ate `DEMO-RAW` cobrem a taxonomia padronizada; `DEMO-NULL1`, `DEMO-NULL2` e `DEMO-FILL` explicam a trilha visual de campos `unfilled` e depois `resolved`
+- leitura correta: usar esses campos para explicar filtros, cards e estados visuais do lineage, nao para descrever regras reais de negocio do `JCLDB001`
+- nivel de confianca: alto
+
+| Campo DEMO | Contrato didatico | Leitura correta |
+| --- | --- | --- |
+| `DEMO-ID` | `copia_identidade` | copia 1:1 usada como exemplo limpo de propagacao |
+| `DEMO-ORD` | `reordenacao_registro` | mostra passagem por SORT sem mudar semantica |
+| `DEMO-ENR` | `copia_enriquecimento_registro` | mostra copia final com enriquecimento no ultimo step |
+| `DEMO-LKP` | `busca_valor` | mostra valor que entra pelo lookup DB2 |
+| `DEMO-KEY` | `uso_chave_busca` | mostra chave usada para acionar o lookup |
+| `DEMO-CALC` | `calculo_derivado` | mostra calculo com multiplas origens |
+| `DEMO-DER` | `derivacao_condicional` | mostra derivacao que escolhe entre upstreams |
+| `DEMO-COND` | `constante_condicional` | mostra bifurcacao entre literais |
+| `DEMO-FIXO` | `constante_literal` | mostra origem sintetica `HARD_CODE` |
+| `DEMO-RAW` | `nao_classificada` | mostra regra propositalmente fora da taxonomia analitica |
+| `DEMO-NULL1` | `null_status=sem_upstream` | campo nasce sem upstream real |
+| `DEMO-NULL2` | `null_status=propagado` | vazio continua propagado na etapa seguinte |
+| `DEMO-FILL` | `null_status=resolvido` | campo so volta a ficar resolvido na regra final |
 
 ## Regras de negócio identificadas
 
@@ -391,8 +412,8 @@ Visão de negócio:
 
 Nota de leitura:
 
-- `OUT-DEMO-FALLBACK` aparece somente na amostra didatica servida pelo viewer para ilustrar o caminho `unfilled -> resolved`
-- ele nao faz parte do conjunto de constantes e campos de negocio inferidos literalmente a partir dos artefatos reais do job
+- a familia `DEMO-*` aparece somente na amostra didatica servida pelo viewer para ilustrar a taxonomia completa e a trilha `null/unfilled`
+- ela nao faz parte do conjunto de constantes e campos de negocio inferidos literalmente a partir dos artefatos reais do job
 
 ## Pontos de lookup em DB2 / VSAM
 
@@ -427,7 +448,7 @@ nível de confiança: alto
 | Semântica exata de INPUT2 | O copybook mostra documento, indicador, produto e moeda | O ramo representa documentos ou itens operacionais/comerciais | médio |
 | Uso de OUT-HARD1, OUT-HARD2 e OUT-HARD3 | Literais fixos no programa | Esses campos servem à rastreabilidade e auditoria técnica | médio |
 | Participação de VSAM | Nenhuma evidência de acesso indexado | O fluxo não usa VSAM | alto |
-| Campo `OUT-DEMO-FALLBACK` no viewer | O campo existe na amostra pública servida em `public/mainframe-sample`, mas não aparece nos artefatos reais analisados | Trata-se de um recurso didático para demonstrar visualmente o caminho `unfilled -> resolved`, não de uma extração literal do job | alto |
+| Familia `DEMO-*` no viewer | Os campos existem na amostra publica servida em `public/mainframe-sample`, mas nao aparecem como conjunto nos artefatos reais analisados | Trata-se de um recurso didatico para demonstrar a taxonomia completa e a trilha visual `sem_upstream -> propagado -> resolvido`, nao de uma extracao literal do job | alto |
 
 ```mermaid
 flowchart LR

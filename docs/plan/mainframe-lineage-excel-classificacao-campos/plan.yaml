@@ -1,0 +1,442 @@
+plan_id: mainframe-lineage-excel-classificacao-campos
+objective: |
+  Criar um novo Excel de classificacao no Mainframe Lineage Viewer capaz de
+  responder de forma objetiva as tres perguntas de negocio pedidas para um
+  bundle mainframe: quais campos vieram direto da origem, quais campos sao
+  hard code ou usam hard code em algum ponto do lineage, e quais campos sao
+  gerados dentro do fluxo. O novo workbook deve ser orientado a consumo de
+  negocio, reutilizar o modelo ParsedLineage ja calculado pelo viewer e evitar
+  que o usuario precise inferir manualmente essas respostas navegando campo a
+  campo no grafo.
+created_at: "2026-04-13"
+created_by: gem-planner
+status: completed
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 6
+  risk_score: medium
+
+tldr: |
+  Plano medio em 5 tarefas e 4 waves. Primeiro fixar o contrato funcional do
+  novo workbook e a regra exata de classificacao para as tres perguntas,
+  resolvendo a ambiguidade de "campo gerado aqui dentro" com colunas de motivo
+  e evidencia. Depois implementar um exportador dedicado que derive as listas a
+  partir de columnLineageEdges, fieldRules, HARD_CODE e status resolved/unfilled
+  ja existentes no viewer. Em seguida integrar a nova exportacao na UI de
+  mainframe sem quebrar o Excel atual de linhagem detalhada. Por fim, cobrir o
+  comportamento com testes usando a amostra JCLDB001 e atualizar a documentacao
+  da feature para que a classificacao possa ser explicada e auditada.
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: "A regra de classificacao de 'gerados aqui dentro' ficar ambigua e misturar campos calculados com campos ainda sem upstream resolvido"
+      likelihood: medium
+      impact: high
+      mitigation: "Definir contrato explicito no workbook com coluna de categoria principal e coluna de motivo detalhado, distinguindo transformacao derivada de geracao local sem upstream"
+    - scenario: "Campos com HARD_CODE indireto nao aparecerem na lista porque a deteccao olhar apenas a regra direta do campo selecionado"
+      likelihood: medium
+      impact: high
+      mitigation: "Fazer BFS upstream no lineage de colunas e marcar qualquer campo que tenha HARD_CODE em qualquer ponto do caminho, inclusive por regra herdada"
+    - scenario: "A exportacao nova conflitar com o Excel existente e confundir o usuario sobre qual botao usar"
+      likelihood: low
+      impact: medium
+      mitigation: "Manter exportadores separados e rotulos claros na UI, um para linhagem detalhada e outro para classificacao executiva"
+  assumptions:
+    - "Nao existe docs/PRD.yaml no repositorio; o pedido do usuario e a fonte de verdade para este escopo"
+    - "O novo workbook sera separado do Excel atual de linhagem detalhada, em vez de substituir a exportacao existente"
+    - "A classificacao pode ser derivada apenas do modelo ParsedLineage e dos contratos atuais de HARD_CODE, transformacao padronizada e status resolved/unfilled"
+    - "Campos 'vindos direto da origem' serao tratados como campos cujo caminho efetivo relevante e de copia de identidade, sem dependencia de HARD_CODE"
+    - "Campos 'hard code ou usam hard code' incluirao tanto atribuicoes diretas constantes quanto qualquer alvo com HARD_CODE em algum ponto do upstream"
+    - "Campos 'gerados aqui dentro' incluirao campos cujo resultado depende de transformacao local nao identitaria ou campos ainda sem upstream resolvido, com motivo detalhado no workbook"
+
+implementation_specification:
+  code_structure: |
+    A implementacao deve introduzir um exportador dedicado para classificacao,
+    separado do exportLineageExcel atual. Esse novo modulo deve receber
+    ParsedLineage e a selecao atual de campos ou, se o produto preferir escopo
+    global do JCL filtrado, operar sobre todos os campos visiveis do filteredData.
+    O modulo deve construir um workbook com abas orientadas a resposta de
+    negocio, por exemplo Resumo, Direto da origem, Hard code e Gerados aqui.
+    A classificacao precisa reutilizar a malha de edges, fieldRules e status de
+    coluna ja calculados pelo viewer, evitando duplicar a semantica de parsing.
+    O botao novo deve ficar no painel de regras ou cabecalho operacional com
+    rotulo explicito de classificacao, preservando o botao atual de Exportar
+    Excel de linhagem detalhada. A implementacao deve priorizar funcoes puras
+    reutilizaveis para: enumerar campos candidatos, percorrer upstream,
+    detectar HARD_CODE indireto, consolidar categoria principal e produzir
+    linhas tabulares com evidencia resumida.
+  affected_areas:
+    - mainframe-lineage-viewer/src/lib/mainframe/exportLineageExcel.ts
+    - mainframe-lineage-viewer/src/app/mainframe/page.tsx
+    - mainframe-lineage-viewer/src/lib/mainframe
+    - mainframe-lineage-viewer/__tests__
+    - docs/mainframe-lineage-viewer-v1.md
+  component_details:
+    - component: Contrato de classificacao de campos
+      responsibility: "Definir criterios deterministas para responder as tres perguntas e o layout final do workbook"
+      interfaces:
+        - "Categoria principal por campo: direto_origem, hard_code, gerado_fluxo"
+        - "Motivo detalhado por campo: copia_identidade, hard_code_direto, hard_code_indireto, calculo_derivado, derivacao_condicional, gerado_sem_upstream e similares"
+        - "Colunas de evidencia resumida: dataset, campo, step, transformacao, origem_detectada e observacao"
+    - component: Exportador de classificacao
+      responsibility: "Construir o novo workbook XLSX a partir de ParsedLineage sem impactar o exportador atual"
+      interfaces:
+        - "Funcao exportClassificationExcel(data, selectedFields ou escopo global)"
+        - "Abas do workbook para resumo e listas por pergunta"
+        - "Nome de arquivo dedicado e distinto do Excel de linhagem"
+    - component: Integracao da UI mainframe
+      responsibility: "Expor um novo gatilho de exportacao e deixar claro o escopo do workbook para o usuario"
+      interfaces:
+        - "Botao com rotulo explicito para exportar classificacao dos campos"
+        - "Mensagem ou texto de apoio explicando que o workbook responde as 3 perguntas executivas"
+    - component: Regressao automatizada
+      responsibility: "Garantir que as regras de classificacao nao regredem e que a amostra JCLDB001 continua sendo um fixture auditavel"
+      interfaces:
+        - "Teste das categorias principais e dos motivos detalhados"
+        - "Teste de deteccao de HARD_CODE direto e indireto"
+        - "Teste de campos sem upstream resolvido"
+    - component: Documentacao do viewer
+      responsibility: "Explicar como o novo Excel deve ser lido e quais criterios o classificam"
+      interfaces:
+        - "Secao nova ou atualizada no doc do viewer"
+        - "Descricao das abas e do significado das categorias"
+  dependencies:
+    - component: ParsedLineage
+      relationship: "Fonte de verdade para datasets, edges, fieldRules e stats que alimentam a classificacao"
+    - component: HARD_CODE sintetico
+      relationship: "Permite detectar hard code direto e indireto via dataset sintetico e regras constantes"
+    - component: computeColumnFieldLineageStatus
+      relationship: "Distingue campos com upstream resolvido de campos gerados localmente sem preenchimento de upstream"
+    - component: exportLineageExcel atual
+      relationship: "Serve como referencia de infraestrutura XLSX, mas nao deve ser sobreposto nem perder funcao"
+    - component: MainframeRulePanel
+      relationship: "Ponto natural de integracao do novo botao, pois ja concentra selecao de campos e exportacao atual"
+  integration_points:
+    - "mainframe-lineage-viewer/src/lib/mainframe/parseCanonicalBundle.ts ja cria transformation labels e o dataset sintetico HARD_CODE"
+    - "mainframe-lineage-viewer/src/lib/columnFieldLineage.ts ja calcula status resolved/unfilled que pode alimentar a pergunta sobre campos gerados localmente"
+    - "mainframe-lineage-viewer/src/app/mainframe/page.tsx ja possui selectedFields, filteredData e o botao Exportar Excel"
+    - "mainframe-lineage-viewer/__tests__/mainframeSampleDidacticMatrixContract.test.ts e demais testes da amostra podem servir de fixture para a nova classificacao"
+
+contracts:
+  - from_task: T1
+    to_task: T2
+    interface: "Matriz funcional de classificacao com categorias, motivos detalhados, colunas do workbook e regra de prioridade entre categorias"
+    format: "Contrato implementavel em TypeScript e refletido em testes"
+  - from_task: T2
+    to_task: T3
+    interface: "API exportClassificationExcel e payload esperado de linhas por categoria"
+    format: "Modulo TypeScript com retorno XLSX"
+  - from_task: T2
+    to_task: T4
+    interface: "Regras puras de classificacao por campo e funcoes de traversal upstream"
+    format: "Funcoes TypeScript deterministas testaveis"
+  - from_task: T3
+    to_task: T4
+    interface: "Gatilho real da UI para o workbook novo"
+    format: "Botao renderizado em React com escopo definido"
+  - from_task: T2
+    to_task: T5
+    interface: "Workbook final com nomes de abas e semantica oficial das colunas"
+    format: "Artefato funcional documentavel"
+  - from_task: T4
+    to_task: T5
+    interface: "Resultados verificados contra a amostra JCLDB001"
+    format: "Testes automatizados e evidencias de regressao"
+
+tasks:
+  - id: T1
+    title: "Definir contrato do workbook de classificacao"
+    description: |
+      Fixar a semantica exata do novo Excel antes de implementar qualquer botao
+      ou geracao XLSX. A tarefa deve transformar as tres perguntas do usuario em
+      categorias deterministas, definir regra de prioridade quando um campo se
+      encaixa em mais de um caso e estabelecer as colunas minimas do workbook.
+      O contrato precisa resolver explicitamente a ambiguidade de "gerado aqui
+      dentro" sem perder a leitura de negocio. O esperado e uma classificacao
+      principal simples para consumo executivo e um motivo detalhado para
+      auditoria tecnica.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/src/lib/mainframe/parseCanonicalBundle.ts
+        description: "Fonte do modelo de edges, regras e HARD_CODE sintetico"
+      - path: mainframe-lineage-viewer/src/lib/mainframe/transformationCatalog.ts
+        description: "Taxonomia padronizada de transformacoes do viewer"
+      - path: mainframe-lineage-viewer/src/lib/columnFieldLineage.ts
+        description: "Status resolved/unfilled usado para diferenciar campos sem upstream resolvido"
+    estimated_effort: small
+    estimated_files: 3
+    estimated_lines: 120
+    focus_area: classification-contract
+    verification:
+      - "Existe definicao fechada de categoria principal e motivo detalhado"
+      - "Existe regra de prioridade entre direto_origem, hard_code e gerado_fluxo"
+      - "O contrato define o escopo do workbook: campos selecionados, campos visiveis do filtro ou ambos"
+      - "O contrato define nomes e colunas das abas do workbook"
+    acceptance_criteria:
+      - "Nenhuma das tres perguntas depende de interpretacao manual apos a exportacao"
+      - "A categoria 'gerado aqui dentro' fica tecnicamente defensavel"
+      - "O contrato continua aderente a semantica atual do viewer"
+    failure_modes:
+      - scenario: "Um mesmo campo aparecer duplicado em varias listas sem explicacao clara"
+        likelihood: medium
+        impact: medium
+        mitigation: "Definir categoria principal unica e, se necessario, coluna indicando sinais secundarios como uso indireto de hard code"
+    tech_stack:
+      - TypeScript
+      - XLSX
+      - ParsedLineage
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T2
+    title: "Implementar motor e workbook de classificacao"
+    description: |
+      Construir o novo modulo de exportacao e as funcoes puras que classificam
+      cada campo. A implementacao deve percorrer upstream quando necessario,
+      detectar HARD_CODE direto e indireto, aproveitar transformation labels ja
+      normalizados e usar o status resolved/unfilled para marcar campos gerados
+      localmente sem upstream resolvido. O workbook final deve ter pelo menos
+      uma aba de resumo executivo e abas dedicadas para cada pergunta, com
+      colunas suficientes para auditoria leve sem exigir leitura do grafo.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/src/lib/mainframe/exportLineageExcel.ts
+        description: "Infraestrutura XLSX atual e padrao de nomenclatura para exportacao"
+      - path: mainframe-lineage-viewer/src/lib/types.ts
+        description: "Tipos ParsedLineage, ColumnLineageEdge e ParsedFieldRule"
+      - path: mainframe-lineage-viewer/src/lib/mainframe/parseCanonicalBundle.ts
+        description: "Origem das labels e do dataset HARD_CODE"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 280
+    focus_area: classification-export
+    verification:
+      - "Existe funcao dedicada para exportar o workbook de classificacao"
+      - "Campos hard code indiretos sao detectados via upstream e nao apenas pela regra direta"
+      - "Campos sem upstream resolvido aparecem com motivo claro"
+      - "O workbook distingue categorias principais e evidencias"
+    acceptance_criteria:
+      - "O Excel responde diretamente as tres perguntas do usuario"
+      - "A nova exportacao nao quebra o exportLineageExcel existente"
+      - "Os nomes de arquivo e abas sao autoexplicativos"
+    failure_modes:
+      - scenario: "A BFS upstream ficar cara ou duplicada e gerar classificacao lenta em bundles maiores"
+        likelihood: low
+        impact: medium
+        mitigation: "Extrair helpers puros com cache por fieldKey e reaproveitar mapas de inbound edges"
+    tech_stack:
+      - TypeScript
+      - xlsx
+      - React app state existente
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T3
+    title: "Integrar o novo Excel na tela mainframe"
+    description: |
+      Expor a nova exportacao de forma clara na interface. A tarefa deve decidir
+      o melhor ponto de acionamento, provavelmente ao lado do Excel atual no
+      painel de regras, e deixar evidente que se trata de um workbook de
+      classificacao executiva. A integracao precisa respeitar o escopo correto
+      dos dados exportados, seja pelos campos selecionados, pelo conjunto visivel
+      do filtro atual ou por uma estrategia hibrida definida em T1.
+    wave: 3
+    agent: gem-implementer
+    priority: medium
+    status: completed
+    dependencies:
+      - T2
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/src/app/mainframe/page.tsx
+        description: "Tela principal com selectedFields, filteredData e botao de exportacao atual"
+      - path: mainframe-lineage-viewer/src/lib/mainframe/exportLineageExcel.ts
+        description: "Referencia de integracao do botao atual"
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 90
+    focus_area: ui-integration
+    verification:
+      - "Existe um novo botao com rotulo distinto do Excel atual"
+      - "O clique dispara o workbook de classificacao no escopo definido"
+      - "A UI nao perde o fluxo atual de exportacao detalhada"
+    acceptance_criteria:
+      - "O usuario entende a diferenca entre os dois Excels"
+      - "O novo fluxo nao exige navegar em menus escondidos"
+      - "A integracao funciona com o bundle filtrado por JCL atual"
+    failure_modes:
+      - scenario: "O novo botao usar selectedFields vazios e gerar um workbook inutil sem avisar o usuario"
+        likelihood: medium
+        impact: medium
+        mitigation: "Definir em T1/T3 o fallback claro entre exportar selecao atual ou todo o escopo filtrado quando nao houver selecao"
+    tech_stack:
+      - React 18
+      - Next.js 15
+      - TypeScript
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T4
+    title: "Cobrir a classificacao com testes de regressao"
+    description: |
+      Escrever testes que provem a classificacao com a amostra JCLDB001 e com
+      fixtures pequenas quando necessario. A suite deve validar ao menos: campo
+      direto de origem, hard code direto, hard code herdado por upstream e campo
+      gerado localmente sem upstream resolvido. Quando possivel, os testes devem
+      validar tambem a forma tabular final do workbook ou os dados intermediarios
+      que o alimentam.
+    wave: 4
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - T2
+      - T3
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/__tests__/mainframeSampleDidacticMatrixContract.test.ts
+        description: "Fixture contratual da amostra com cobertura didatica de transformacoes"
+      - path: mainframe-lineage-viewer/__tests__/columnFieldLineage.test.ts
+        description: "Referencia para comportamento de status resolved/unfilled"
+      - path: mainframe-lineage-viewer/__tests__/mainframeSampleSync.test.ts
+        description: "Sincronizacao e carga da amostra JCLDB001"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 240
+    focus_area: regression-tests
+    verification:
+      - "A suite cobre as tres perguntas de negocio"
+      - "Existe caso de HARD_CODE indireto validado por traversal upstream"
+      - "Existe caso de campo sem upstream resolvido validado como gerado localmente"
+      - "Os testes passam sem exigir mudancas no parser fora do escopo"
+    acceptance_criteria:
+      - "As regras de classificacao ficam auditaveis em teste"
+      - "A amostra JCLDB001 vira evidência real da exportacao"
+      - "Mudancas futuras na taxonomia ou no parser quebram testes se alterarem a classificacao"
+    failure_modes:
+      - scenario: "Os testes validarem apenas strings do XLSX final e nao a logica central de classificacao"
+        likelihood: medium
+        impact: medium
+        mitigation: "Separar testes de funcoes puras e testes mais finos do workbook final"
+    tech_stack:
+      - Jest
+      - TypeScript
+      - xlsx
+    test_coverage: targeted
+    requires_review: true
+    review_depth: standard
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Classificacao das tres perguntas com amostra real"
+        steps:
+          - "Carregar a amostra JCLDB001 em teste"
+          - "Executar o motor de classificacao"
+          - "Validar listas de direto_origem, hard_code e gerado_fluxo"
+        expected_result: "As respostas ficam coerentes com a semantica do viewer e com a amostra"
+    environment: development
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T5
+    title: "Documentar a leitura do novo workbook"
+    description: |
+      Atualizar a documentacao do viewer para explicar como o novo Excel deve
+      ser interpretado e em que ele difere do Excel atual de linhagem. A
+      documentacao precisa explicar a definicao de cada categoria, os motivos
+      detalhados e a leitura correta de casos onde um campo usa HARD_CODE de
+      forma indireta. O foco aqui e reduzir ambiguidade para apresentacao,
+      auditoria e uso recorrente.
+    wave: 4
+    agent: gem-documentation-writer
+    priority: medium
+    status: completed
+    dependencies:
+      - T2
+      - T4
+    conflicts_with: []
+    context_files:
+      - path: docs/mainframe-lineage-viewer-v1.md
+        description: "Documento principal do viewer e lugar natural para a nova explicacao"
+      - path: mainframe-lineage-viewer/src/app/mainframe/page.tsx
+        description: "Fonte do comportamento da UI e do ponto de exportacao"
+    estimated_effort: small
+    estimated_files: 2
+    estimated_lines: 80
+    focus_area: documentation
+    verification:
+      - "A documentacao diferencia o Excel de linhagem do Excel de classificacao"
+      - "As tres perguntas aparecem com definicao objetiva"
+      - "Casos de hard code indireto e campo sem upstream resolvido ficam claros"
+    acceptance_criteria:
+      - "Quem ler a documentacao entende quando usar cada workbook"
+      - "A explicacao continua aderente ao comportamento real do viewer"
+      - "A documentacao ajuda em apresentacao e auditoria"
+    failure_modes:
+      - scenario: "A documentacao simplificar demais e esconder a ambiguidade residual de campos gerados"
+        likelihood: low
+        impact: medium
+        mitigation: "Incluir tabela curta de categoria principal versus motivo detalhado"
+    tech_stack:
+      - Markdown
+      - Documentacao funcional do viewer
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: update
+    audience: developers
+    coverage_matrix:
+      - "objetivo do workbook"
+      - "definicao das 3 categorias"
+      - "interpretacao de motivos detalhados"
+      - "diferenca para o Excel atual de linhagem"

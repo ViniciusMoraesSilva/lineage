@@ -35,7 +35,7 @@ Para a sua apresentacao, a pagina que importa e a de mainframe, porque e nela qu
 - persistencia local em IndexedDB para bundles carregados
 - filtro de JCL ativo salvo em localStorage
 - exportacao em PDF da visao de lineage
-- exportacao em Excel das regras e da trilha upstream dos campos selecionados
+- exportacao em dois workbooks Excel: um detalhado para linhagem e regras dos campos selecionados, e um executivo para classificacao dos campos
 
 ## Fluxo conceitual
 
@@ -104,7 +104,42 @@ Esta secao fecha a explicacao tecnica do lineage:
 - exibe `rule_id`, `step_id`, tipo bruto, transformacao padronizada e programa
 - exibe expressao e descricao
 - quando `evidence.csv` e `artifacts.csv` existem, mostra provas textuais com localizacao e artefato de origem
-- permite exportar a selecao para Excel
+- permite exportar um Excel detalhado da selecao e um Excel executivo de classificacao
+
+### 5. Dois workbooks Excel com leituras diferentes
+
+O viewer agora expoe dois exports no painel de regras, e eles atendem perguntas diferentes.
+
+| Workbook | Quando usar | Escopo real no viewer |
+| --- | --- | --- |
+| `Exportar Excel detalhado` | quando a leitura precisa mostrar a trilha upstream, as regras explicitas e a evidencia tecnica dos campos selecionados | so aparece quando existe selecao de campos e exporta apenas a selecao atual |
+| `Exportar Excel de classificacao` | quando a leitura precisa responder rapidamente, em apresentacao ou auditoria, se um campo veio direto da origem, usa hard code ou foi gerado no fluxo | se houver selecao, exporta a selecao atual; se nao houver, exporta os campos visiveis do filtro JCL atual |
+
+O Excel de classificacao nao substitui o Excel detalhado. O primeiro resume a resposta executiva por campo; o segundo continua sendo o material de trilha tecnica.
+
+### Como ler o workbook executivo de classificacao
+
+O workbook executivo responde tres perguntas objetivas por campo e aplica uma prioridade fixa quando ha sinais mistos: `hard_code > gerado_fluxo > direto_origem`.
+
+| Categoria principal | Definicao objetiva | Como ler na pratica |
+| --- | --- | --- |
+| `direto_origem` | o campo tem linhagem resolvida e so preserva identidade ou reordenacao, sem sinal de hard code nem transformacao geradora | use quando quiser afirmar que o valor veio da origem sem mudanca substantiva |
+| `hard_code` | o campo recebe constante literal ou constante condicional em algum ponto relevante do lineage | inclui tanto hard code direto quanto hard code indireto herdado de upstream |
+| `gerado_fluxo` | o campo e produzido por transformacao local nao identitaria, por lookup, calculo, derivacao condicional, enriquecimento ou ficou sem upstream resolvido | use quando o valor nasce ou e fechado dentro do fluxo, e nao como copia simples da origem |
+
+Os motivos detalhados existem para auditoria curta. Eles refinam a categoria principal sem trocar a resposta executiva:
+
+- `copia_identidade` e `reordenacao_registro` sustentam a leitura de `direto_origem`
+- `hard_code_direto` significa constante no proprio campo; `hard_code_indireto` significa que o campo depende de um upstream que ja trouxe constante
+- `calculo_derivado`, `derivacao_condicional`, `busca_valor`, `uso_chave_busca` e `copia_enriquecimento_registro` sustentam a leitura de `gerado_fluxo`
+- `gerado_sem_upstream` marca o caso em que o viewer ainda nao encontrou upstream resolvido para o campo; para leitura executiva, ele continua contado como gerado no fluxo e nao como origem direta
+
+Leitura recomendada para apresentacao e auditoria:
+
+- use o Excel de classificacao para responder as tres perguntas de negocio sem navegar campo a campo no grafo
+- abra o Excel detalhado quando precisar defender a resposta com regra, step, origem upstream e evidencia textual
+- quando aparecer `sinal_hard_code_indireto = Sim`, leia isso como dependencia herdada de constante, mesmo que a ultima regra do campo nao seja uma constante literal
+- quando aparecer `gerado_sem_upstream`, leia como campo ainda fechado localmente pelo viewer, sem evidenciar origem resolvida ate aquele ponto do lineage
 
 ## Escopo real dos CSVs no viewer
 
@@ -129,9 +164,36 @@ Arquivos opcionais, mas muito importantes para enriquecer a demonstracao:
 
 - o botao `Carregar amostra JCLDB001` le diretamente a copia estatica publicada em `mainframe-lineage-viewer/public/mainframe-sample`
 - a pasta `generated/mainframe-extractor/JCLDB001/importar` continua sendo a referencia canonica do bundle, mas nao e carregada pelo navegador de forma direta
-- dentro dessa amostra existe um campo demonstrativo chamado `OUT-DEMO-FALLBACK`, criado especificamente para mostrar o caminho `unfilled -> resolved` durante a apresentacao
-- nesse recorte didatico, o campo aparece vazio em `&&TMPOUT03`, e depois e propagado para `APP.ARQ.SAIDA.CBLDB001`, onde passa a ter upstream resolvido por meio da regra condicional `IF OUT-DEMO-FALLBACK = ' ' THEN 'LATE_FILL_DEMO' ELSE OUT-DEMO-FALLBACK`
+- a amostra publica agora combina duas camadas: a espinha dorsal do fluxo real de `JCLDB001` e uma camada didatica controlada formada pela familia `DEMO-ID`, `DEMO-ORD`, `DEMO-ENR`, `DEMO-LKP`, `DEMO-KEY`, `DEMO-CALC`, `DEMO-DER`, `DEMO-COND`, `DEMO-FIXO`, `DEMO-RAW`, `DEMO-NULL1`, `DEMO-NULL2` e `DEMO-FILL`
+- a convencao de nomes curtos faz parte do contrato da demo: todo campo demonstrativo comeca com `DEMO-` e usa siglas compactas para caber nos cards, nos filtros e nos exports sem inflar a leitura
+- na matriz didatica contratual, os 10 campos da trilha `taxonomy` continuam sendo a cobertura oficial de `rule_subtype`, enquanto a trilha `null` usa `null_status` para narrar `sem_upstream`, `propagado` e `resolvido`
+- na materializacao do bundle canonico, `DEMO-NULL2` e `DEMO-FILL` tambem reutilizam subtipos padronizados ja existentes para sustentar a propagacao e a resolucao visual do lineage: `DEMO-NULL2` propaga vazio com `copia_identidade`, `DEMO-FILL` primeiro propaga vazio com `copia_identidade` e depois fecha a trilha com `constante_condicional`; isso nao cria novos subtipos, apenas reaproveita a taxonomia padronizada fora da trilha principal de cobertura
 - esse comportamento deve ser lido como demonstracao controlada do viewer, nao como extracao literal de uma regra real do COBOL ou do JCL de `JCLDB001`
+
+### Familia DEMO e roteiro didatico da taxonomia
+
+| Campo DEMO | Papel didatico | Leitura recomendada na apresentacao |
+| --- | --- | --- |
+| `DEMO-ID` | `copia_identidade` | exemplo de copia 1:1 entre origem e destino, sem regra adicional |
+| `DEMO-ORD` | `reordenacao_registro` | exemplo de campo que atravessa o SORT e preserva o valor apos a reordenacao |
+| `DEMO-ENR` | `copia_enriquecimento_registro` | exemplo de copia final com enriquecimento no ultimo passo |
+| `DEMO-LKP` | `busca_valor` | exemplo de valor que entra no lineage por lookup DB2 |
+| `DEMO-KEY` | `uso_chave_busca` | exemplo de campo usado como chave de pesquisa do lookup |
+| `DEMO-CALC` | `calculo_derivado` | exemplo de calculo com multiplas origens reais |
+| `DEMO-DER` | `derivacao_condicional` | exemplo de derivacao que escolhe entre upstreams conforme condicao |
+| `DEMO-COND` | `constante_condicional` | exemplo de condicao que escolhe entre literais curtos |
+| `DEMO-FIXO` | `constante_literal` | exemplo de valor literal que nasce como `HARD_CODE` |
+| `DEMO-RAW` | `nao_classificada` | exemplo propositalmente mantido fora da taxonomia analitica |
+| `DEMO-NULL1` | `null_status=sem_upstream` | campo presente no schema sem mapping real; deve aparecer como vazio sem ser lido como erro do fluxo real |
+| `DEMO-NULL2` | `null_status=propagado` + reutiliza `copia_identidade` no bundle | mesmo vazio propagado para a etapa seguinte, ainda sem upstream real |
+| `DEMO-FILL` | `null_status=resolvido` + reutiliza `copia_identidade` e `constante_condicional` no bundle | trilha que nasce vazia, propaga esse vazio e so fica resolvida na regra final da saida |
+
+Leitura pratica para evitar confusao:
+
+- apresente primeiro a narrativa real do job com `INPUT1`, `INPUT2`, `DB2`, `&&TMPOUT03` e `APP.ARQ.SAIDA.CBLDB001`
+- depois mostre a camada didatica como um overlay controlado, usando a familia `DEMO-*` apenas para explicar os filtros e a taxonomia do viewer
+- se surgir a pergunta sobre `rule_subtype`, diferencie o contrato didatico da materializacao: a cobertura oficial da taxonomia continua concentrada em `DEMO-ID` ate `DEMO-RAW`, mas o bundle reaproveita `copia_identidade` e `constante_condicional` em `DEMO-NULL2` e `DEMO-FILL` para que a trilha visual de propagacao e resolucao exista de fato no grafo
+- ao falar da trilha null, trate `DEMO-NULL1`, `DEMO-NULL2` e `DEMO-FILL` como narrativa visual de status, nao como evidencias de que o COBOL real possui tres regras extras
 
 ### CSVs que existem no bundle gerado, mas nao sao a fonte primaria desta tela
 
@@ -464,7 +526,7 @@ Se voce quiser apresentar o sistema com um caso concreto, o bundle JCLDB001 e su
 - `artifacts.csv` ancora a narrativa em JCL, COBOL, copybooks e DCLGEN
 - `evidence.csv` prova onde cada conclusao foi encontrada no codigo fonte
 
-Ao apresentar a amostra, vale separar duas camadas de leitura. A primeira e a narrativa fiel do fluxo real de `JCLDB001`, extraida de JCL, COBOL, copybooks e DCLGEN. A segunda e o pequeno acrescimo didatico do campo `OUT-DEMO-FALLBACK` na copia publicada em `public/mainframe-sample`, usado somente para demonstrar em tela como um campo pode aparecer sem upstream resolvido em uma etapa intermediaria e voltar a ficar resolvido na etapa final.
+Ao apresentar a amostra, vale separar duas camadas de leitura. A primeira e a narrativa fiel do fluxo real de `JCLDB001`, extraida de JCL, COBOL, copybooks e DCLGEN. A segunda e a camada didatica controlada da familia `DEMO-*`, publicada na copia de `public/mainframe-sample` para tornar o filtro de transformacao e os estados visuais imediatamente legiveis. Nessa segunda camada, a taxonomia fica ancorada em exemplos um-para-um e a trilha null deve ser contada como `sem_upstream -> propagado -> resolvido`, sempre sem reclassificar isso como fluxo real do job.
 
 Em outras palavras: o bundle transforma um processo batch antigo em uma narrativa auditavel, visual e demonstravel.
 

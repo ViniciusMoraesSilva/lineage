@@ -139,7 +139,7 @@ describe('computeColumnFieldLineageStatus', () => {
         expect(statuses['file::table_d::ghost_flag']).toBe('resolved');
     });
 
-    it('keeps the public JCLDB001 sample didactic field unfilled in E006 and resolved in E007 via conditional hard code', () => {
+    it('keeps the public JCLDB001 sample null trail aligned with DEMO-NULL1, DEMO-NULL2 and DEMO-FILL', () => {
         const parsed = parseCanonicalBundle({
             entities: readSampleFile('entities.csv'),
             entityColumns: readSampleFile('entity_columns.csv'),
@@ -151,33 +151,68 @@ describe('computeColumnFieldLineageStatus', () => {
         });
         const statuses = computeColumnFieldLineageStatus(parsed);
 
-        expect(statuses['mainframe://dataset::&&TMPOUT03::OUT-DEMO-FALLBACK']).toBe('unfilled');
-        expect(statuses['mainframe://dataset::APP.ARQ.SAIDA.CBLDB001::OUT-DEMO-FALLBACK']).toBe('resolved');
+        expect(statuses['mainframe://dataset::&&TMPOUT03::DEMO-NULL1']).toBe('unfilled');
+        expect(statuses['mainframe://dataset::&&TMPOUT03::DEMO-NULL2']).toBe('unfilled');
+        expect(statuses['mainframe://dataset::&&TMPOUT03::DEMO-FILL']).toBe('unfilled');
+        expect(statuses['mainframe://dataset::APP.ARQ.SAIDA.CBLDB001::DEMO-NULL2']).toBe('unfilled');
+        expect(statuses['mainframe://dataset::APP.ARQ.SAIDA.CBLDB001::DEMO-FILL']).toBe('resolved');
+
+        expect(parsed.columnLineageEdges).toEqual(
+            expect.not.arrayContaining([
+                expect.objectContaining({
+                    targetDataset: 'mainframe://dataset::&&TMPOUT03',
+                    targetField: 'DEMO-NULL1',
+                }),
+            ]),
+        );
 
         expect(parsed.columnLineageEdges).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
                     sourceDataset: 'mainframe://dataset::&&TMPOUT03',
-                    sourceField: 'OUT-DEMO-FALLBACK',
+                    sourceField: 'DEMO-NULL2',
                     targetDataset: 'mainframe://dataset::APP.ARQ.SAIDA.CBLDB001',
-                    targetField: 'OUT-DEMO-FALLBACK',
-                    transformationType: 'sort',
-                    transformationSubtype: 'copia_enriquecimento_registro',
+                    targetField: 'DEMO-NULL2',
+                    transformationType: 'move',
+                    transformationSubtype: 'copia_identidade',
+                }),
+                expect.objectContaining({
+                    sourceDataset: 'mainframe://dataset::&&TMPOUT03',
+                    sourceField: 'DEMO-FILL',
+                    targetDataset: 'mainframe://dataset::APP.ARQ.SAIDA.CBLDB001',
+                    targetField: 'DEMO-FILL',
+                    transformationType: 'move',
+                    transformationSubtype: 'copia_identidade',
                 }),
                 expect.objectContaining({
                     sourceDataset: 'mainframe://hardcode::HARD_CODE',
                     targetDataset: 'mainframe://dataset::APP.ARQ.SAIDA.CBLDB001',
-                    targetField: 'OUT-DEMO-FALLBACK',
+                    targetField: 'DEMO-FILL',
                     transformationType: 'conditional',
                     transformationSubtype: 'constante_condicional',
                 }),
             ]),
         );
 
-        expect(parsed.fieldRules?.['mainframe://dataset::APP.ARQ.SAIDA.CBLDB001::OUT-DEMO-FALLBACK']).toEqual(
+        expect(parsed.fieldRules?.['mainframe://dataset::&&TMPOUT03::DEMO-NULL1']).toBeUndefined();
+        expect(parsed.fieldRules?.['mainframe://dataset::APP.ARQ.SAIDA.CBLDB001::DEMO-NULL2']).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    ruleId: 'R030',
+                    ruleId: 'R052',
+                    ruleType: 'move',
+                    ruleSubtype: 'copia_identidade',
+                }),
+            ]),
+        );
+        expect(parsed.fieldRules?.['mainframe://dataset::APP.ARQ.SAIDA.CBLDB001::DEMO-FILL']).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    ruleId: 'R053',
+                    ruleType: 'move',
+                    ruleSubtype: 'copia_identidade',
+                }),
+                expect.objectContaining({
+                    ruleId: 'R054',
                     ruleType: 'conditional',
                     ruleSubtype: 'constante_condicional',
                 }),

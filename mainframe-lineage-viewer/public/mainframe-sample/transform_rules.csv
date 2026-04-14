@@ -28,4 +28,28 @@ R026,S003,conditional,constante_condicional,E006,OUT-TIPO-SAIDA,IF IN2-INDICADOR
 R027,S003,conditional,constante_condicional,E006,OUT-OCORRENCIA,IF IN2-INDICADOR = 'S' THEN '000' ELSE '020',Occurrence code derived from INPUT2 indicator
 R028,S003,db_lookup,uso_chave_busca,E006,OUT-CHAVE,WS-CHAVE-PESQUISA -> DB2 WHERE CHAVE_CLIENTE = HV-CHAVE-CLIENTE,DB2 lookup is keyed by the incoming record key
 R029,S004,sort,copia_enriquecimento_registro,E007,*,SORT FIELDS=COPY + OUTREC OVERLAY=(291:C'JCLBATCH01'),Final SORT copies all output fields and injects JCL marker
-R030,S004,conditional,constante_condicional,E007,OUT-DEMO-FALLBACK,IF OUT-DEMO-FALLBACK = ' ' THEN 'LATE_FILL_DEMO' ELSE OUT-DEMO-FALLBACK,Didactic fallback fills the blank propagated field in final output
+R030,S001,copy,copia_identidade,E002,DEMO-ID,DEMO-ID -> DEMO-ID,Didactic identity trail starts in INPUT1 copy step
+R031,S002,sort,reordenacao_registro,E004,DEMO-ORD,SORT DEMO-ORD BY CHAVE,Didactic reorder trail anchors the SORT subtype
+R032,S003,move,copia_identidade,E006,DEMO-ID,MOVE DEMO-ID TO DEMO-ID,Identity trail lands in the main output temp dataset
+R033,S003,move,copia_identidade,E006,DEMO-ORD,MOVE DEMO-ORD TO DEMO-ORD,Reordered field keeps a simple 1:1 copy after the sort step
+R034,S003,move,copia_identidade,E006,DEMO-ENR,MOVE IN1-COD-OPER TO DEMO-ENR,Seed value for the later enrichment overlay example
+R035,S003,db_lookup,busca_valor,E006,DEMO-LKP,SELECT DEMO-LKP INTO HV-DEMO-LKP,Lookup value comes only from DB2
+R036,S003,db_lookup,uso_chave_busca,E006,DEMO-KEY,WS-DEMO-KEY -> DB2 WHERE CHAVE_CLIENTE = WS-DEMO-KEY,Lookup key stays visible as its own didactic field
+R037,S003,compute,calculo_derivado,E006,DEMO-CALC,IN1-QTDE * HV-VALOR-BASE,Derived calculation combines INPUT1 and DB2 values
+R038,S003,conditional,derivacao_condicional,E006,DEMO-DER,IF IN1-COD-OPER = 'DB2' THEN IN2-SEGMENTO ELSE IN1-COD-OPER,Conditional derivation switches between two real upstream values
+R039,S003,conditional,constante_condicional,E006,DEMO-COND,IF IN1-TIPO-REG = 'A' THEN 'ON' ELSE 'OFF',Conditional branch chooses a short literal outcome
+R040,S003,constant,constante_literal,E006,DEMO-FIXO,MOVE 'FIXO' TO DEMO-FIXO,Literal-only assignment keeps the hard code subtype isolated
+R041,S003,transform,nao_classificada,E006,DEMO-RAW,EDIT IN1-DATA-MOV INTO DEMO-RAW,Raw transformation remains intentionally outside the standardized taxonomy
+R042,S004,move,copia_identidade,E007,DEMO-ID,DEMO-ID -> DEMO-ID,Identity example remains simple through the final handoff
+R043,S004,move,copia_identidade,E007,DEMO-ORD,DEMO-ORD -> DEMO-ORD,Reorder example stays traceable after the sort branch joins the output
+R044,S004,sort,copia_enriquecimento_registro,E007,DEMO-ENR,OUTREC OVERLAY=(DEMO-ENR,+JCLTAG),Final copy injects an extra marker to illustrate enrichment
+R045,S004,move,copia_identidade,E007,DEMO-LKP,DEMO-LKP -> DEMO-LKP,Lookup value is propagated unchanged to the final dataset
+R046,S004,move,copia_identidade,E007,DEMO-KEY,DEMO-KEY -> DEMO-KEY,Lookup key remains visible in the final dataset
+R047,S004,move,copia_identidade,E007,DEMO-CALC,DEMO-CALC -> DEMO-CALC,Calculated value is propagated without further semantic change
+R048,S004,move,copia_identidade,E007,DEMO-DER,DEMO-DER -> DEMO-DER,Conditional derivation result is copied to the final dataset
+R049,S004,move,copia_identidade,E007,DEMO-COND,DEMO-COND -> DEMO-COND,Conditional literal example is copied to the final dataset
+R050,S004,move,copia_identidade,E007,DEMO-FIXO,DEMO-FIXO -> DEMO-FIXO,Literal example is copied to the final dataset
+R051,S004,move,copia_identidade,E007,DEMO-RAW,DEMO-RAW -> DEMO-RAW,Unclassified transformation stays visible in the final dataset
+R052,S004,move,copia_identidade,E007,DEMO-NULL2,DEMO-NULL2 -> DEMO-NULL2,Blank field is propagated as blank to keep the unfilled narrative visible
+R053,S004,move,copia_identidade,E007,DEMO-FILL,DEMO-FILL -> DEMO-FILL,Blank field is first copied forward before the late fill happens
+R054,S004,conditional,constante_condicional,E007,DEMO-FILL,IF DEMO-FILL = ' ' THEN 'FILL' ELSE DEMO-FILL,Late conditional hard code resolves the previously blank didactic field

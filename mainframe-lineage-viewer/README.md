@@ -24,6 +24,16 @@ Little [Marquez](https://marquezproject.ai/).
 
 ![Marquito](.imgs/marquito.gif)
 
+cd "/Users/macbookpro/Documents/git/mainframelineage/marquito/out"
+python3 -m http.server 28081
 
- cd "/Users/macbookpro/Documents/git/mainframelineage/marquito/out"                                                       
-python3 -m http.server 28081    
+### Validacao local T6
+
+Para validar a rota /mainframe na mesma porta usada pelos checks browser-based, gere o export e sirva o diretorio out na 4173:
+
+```bash
+npm run build
+npm run serve:t6
+```
+
+Isso evita subir um servidor manual em um diretorio diferente do export, que faz a UI abrir com HTML mas quebra os assets em /_next e resulta em tela branca.

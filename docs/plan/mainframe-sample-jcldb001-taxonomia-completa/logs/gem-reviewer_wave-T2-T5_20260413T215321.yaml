@@ -1,0 +1,44 @@
+plan_id: mainframe-sample-jcldb001-taxonomia-completa
+review_scope: wave
+wave_tasks:
+  - T2
+  - T5
+status: failed
+failure_type: fixable
+summary: >-
+  A reexecucao da wave 2 confirmou a paridade documental entre a matriz didatica,
+  o bundle canonico e a narrativa de `null_status` versus `rule_subtype`, mas a
+  validacao de integracao falhou no typecheck completo do viewer.
+findings:
+  - severity: medium
+    category: quality
+    description: >-
+      O typecheck completo falha porque o teste
+      __tests__/mainframeClassificationContract.test.ts importa o modulo
+      '@/lib/mainframe/classificationWorkbookContract', que nao existe no
+      workspace atual.
+    location: mainframe-lineage-viewer/__tests__/mainframeClassificationContract.test.ts:6
+validation:
+  build:
+    status: pass
+  lint:
+    status: pass_with_warnings
+    warnings:
+      - src/app/fabric-livy/page.tsx:133 react-hooks/exhaustive-deps
+      - src/components/ColumnLineage.tsx:970 react-hooks/exhaustive-deps
+      - src/components/ColumnLineage.tsx:979 react-hooks/exhaustive-deps
+      - src/components/TableLineage.tsx:388 react-hooks/exhaustive-deps
+  typecheck:
+    status: fail
+    errors:
+      - __tests__/mainframeClassificationContract.test.ts:6 TS2307 Cannot find module '@/lib/mainframe/classificationWorkbookContract'
+  tests:
+    status: pass
+    executed:
+      - __tests__/mainframeSampleDidacticMatrixContract.test.ts
+parity_review:
+  status: pass
+  notes:
+    - didactic-matrix.csv mantem 10 linhas taxonomy com rule_subtype e 3 linhas null com null_status
+    - docs/mainframe-lineage-viewer-v1.md diferencia corretamente contrato didatico e materializacao do bundle canonico
+    - docs/JCLDB001-documentacao.md preserva a distincao entre null_status narrativo e reutilizacao de subtipos padronizados no bundle

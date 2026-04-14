@@ -1,0 +1,45 @@
+plan_id: mainframe-sample-jcldb001-taxonomia-completa
+review_scope: wave
+wave_tasks:
+  - T3
+status: failed
+failure_type: fixable
+summary: >-
+  A wave 3 atende ao objetivo principal de espelhamento: os três CSVs em
+  mainframe-lineage-viewer/public/mainframe-sample estão idênticos aos arquivos
+  canônicos em generated/mainframe-extractor/JCLDB001/importar, e o teste de sync
+  ficou verde. A revisão falhou porque a validação integrada do workspace não
+  passou no typecheck completo do viewer.
+findings:
+  - severity: medium
+    category: quality
+    description: >-
+      O typecheck falha em __tests__/mainframeClassificationWorkbook.test.ts
+      porque o teste importa o módulo '@/lib/mainframe/exportClassificationExcel',
+      que não existe no workspace atual.
+    location: mainframe-lineage-viewer/__tests__/mainframeClassificationWorkbook.test.ts:9
+validation:
+  parity_review:
+    status: pass
+    notes:
+      - entity_columns.csv está idêntico entre generated e public
+      - column_mappings.csv está idêntico entre generated e public
+      - transform_rules.csv está idêntico entre generated e public
+      - __tests__/mainframeSampleSync.test.ts passou com 3/3 asserts
+  build:
+    status: pass
+  lint:
+    status: pass_with_warnings
+    warnings:
+      - src/app/fabric-livy/page.tsx:133 react-hooks/exhaustive-deps
+      - src/components/ColumnLineage.tsx:970 react-hooks/exhaustive-deps
+      - src/components/ColumnLineage.tsx:979 react-hooks/exhaustive-deps
+      - src/components/TableLineage.tsx:388 react-hooks/exhaustive-deps
+  typecheck:
+    status: fail
+    errors:
+      - __tests__/mainframeClassificationWorkbook.test.ts:9 TS2307 Cannot find module '@/lib/mainframe/exportClassificationExcel'
+  tests:
+    status: pass
+    executed:
+      - __tests__/mainframeSampleSync.test.ts

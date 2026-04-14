@@ -1,0 +1,53 @@
+plan_id: mainframe-sample-jcldb001-taxonomia-completa
+review_scope: wave
+wave_tasks:
+  - T3
+status: failed
+failure_type: fixable
+summary: >-
+  A reexecucao da wave 3 confirmou a paridade byte a byte entre generated e
+  public e validou lint, typecheck e build apos o hotfix, mas a validacao
+  integrada continua falhando porque a regressao de column field lineage ainda
+  referencia o campo legado OUT-DEMO-FALLBACK removido pelo novo contrato da
+  amostra.
+findings:
+  - severity: medium
+    category: quality
+    description: >-
+      O teste de regressao columnFieldLineage.test.ts ainda valida o campo
+      legado OUT-DEMO-FALLBACK, embora o contrato atual da amostra e a matriz
+      didatica afirmem que esse campo foi removido e substituido pelas trilhas
+      DEMO-NULL1, DEMO-NULL2 e DEMO-FILL. A suite integrada, portanto, segue
+      vermelha mesmo com a paridade public/generated correta.
+    location: mainframe-lineage-viewer/__tests__/columnFieldLineage.test.ts:154
+validation:
+  parity_review:
+    status: pass
+    notes:
+      - entity_columns.csv identico entre generated e public
+      - column_mappings.csv identico entre generated e public
+      - transform_rules.csv identico entre generated e public
+  build:
+    status: pass
+    errors: []
+  lint:
+    status: pass
+    errors:
+      - src/app/fabric-livy/page.tsx:133 react-hooks/exhaustive-deps warning
+      - src/components/ColumnLineage.tsx:970 react-hooks/exhaustive-deps warning
+      - src/components/ColumnLineage.tsx:979 react-hooks/exhaustive-deps warning
+      - src/components/TableLineage.tsx:388 react-hooks/exhaustive-deps warning
+  typecheck:
+    status: pass
+    errors: []
+  tests:
+    status: fail
+    errors:
+      - __tests__/columnFieldLineage.test.ts:154 expected status for mainframe://dataset::&&TMPOUT03::OUT-DEMO-FALLBACK to be unfilled but received undefined
+      - __tests__/columnFieldLineage.test.ts:155 expected status for mainframe://dataset::APP.ARQ.SAIDA.CBLDB001::OUT-DEMO-FALLBACK to be resolved but field no longer exists in the sample
+    executed:
+      - __tests__/mainframeSampleSync.test.ts
+      - __tests__/mainframeSampleDidacticMatrixContract.test.ts
+      - __tests__/columnFieldLineage.test.ts
+      - __tests__/mainframeClassificationContract.test.ts
+      - __tests__/mainframeClassificationWorkbook.test.ts

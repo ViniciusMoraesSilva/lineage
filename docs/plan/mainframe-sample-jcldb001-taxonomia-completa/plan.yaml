@@ -1,0 +1,566 @@
+plan_id: mainframe-sample-jcldb001-taxonomia-completa
+objective: |
+  Recriar a amostra carregada pelo botao "Carregar amostra JCLDB001" para que
+  ela vire uma vitrine didatica clara, simples e completa do viewer. A nova
+  amostra deve cobrir explicitamente todos os 10 subtipos padronizados de
+  transformacao (`copia_identidade`, `reordenacao_registro`,
+  `copia_enriquecimento_registro`, `busca_valor`, `uso_chave_busca`,
+  `calculo_derivado`, `derivacao_condicional`, `constante_condicional`,
+  `constante_literal`, `nao_classificada`) e tambem os cenarios visuais de
+  campos sem upstream real: campo que nasce nao preenchido, continua nao
+  preenchido em etapa seguinte, e campo que volta a ficar resolvido quando uma
+  regra ou origem real finalmente o alimenta. A trilha null deve permanecer
+  contratada como narrativa de status em coluna dedicada (`null_status`), sem
+  introduzir novos valores de `rule_subtype` fora da taxonomia padronizada.
+created_at: "2026-04-14"
+created_by: gem-planner
+status: completed
+research_confidence: high
+
+plan_metrics:
+  wave_1_task_count: 1
+  total_dependencies: 7
+  risk_score: high
+
+tldr: |
+  Plano complexo em 6 tarefas e 5 waves. Primeiro definir uma matriz didatica
+  unica para a amostra JCLDB001, com uma familia de campos DEMO que separe de
+  forma visual cada subtipo de transformacao e outra trilha dedicada aos casos
+  null/unfilled. Depois remodelar o bundle canonico para introduzir esses
+  campos e regras sem poluir a narrativa dos campos reais de negocio. Em
+  seguida espelhar o resultado na copia publica servida pela UI, adicionar
+  testes de regressao que comprovem cobertura da taxonomia e estados
+  unfilled/resolved, atualizar a documentacao de apresentacao e por fim validar
+  no navegador que cada filtro de transformacao e cada cenario nulo ficam
+  imediatamente legiveis em tela. A matriz contratual de T1 deve separar
+  explicitamente `rule_subtype` e `null_status` para que T2 nao materialize
+  subtipos inexistentes no viewer.
+
+open_questions: []
+
+pre_mortem:
+  overall_risk_level: high
+  critical_failure_modes:
+    - scenario: "Os exemplos didaticos ficarem amontoados no mesmo grupo de campos e o usuario continuar sem conseguir isolar rapidamente cada subtipo no viewer"
+      likelihood: medium
+      impact: high
+      mitigation: "Reservar uma familia explicita de campos com prefixo DEMO e distribuir um ou dois campos por subtipo, sem reaproveitar o mesmo alvo para significados diferentes"
+    - scenario: "A amostra publica divergir do bundle canonico e o botao carregar uma versao diferente da planejada"
+      likelihood: medium
+      impact: high
+      mitigation: "Manter generated/mainframe-extractor/JCLDB001/importar como fonte canonica, espelhar a mesma mudanca em public/mainframe-sample e reforcar os testes de sincronizacao"
+    - scenario: "Os cenarios null/unfilled usarem regras que acabam criando upstream sintetico cedo demais e o campo nao permanecer laranja onde deveria"
+      likelihood: medium
+      impact: critical
+      mitigation: "Separar os casos de null em trilhas distintas: um campo sem mapping real na etapa intermediaria, um campo propagado ainda vazio, e um campo resolvido apenas na etapa em que a regra final ou o lookup real aparece"
+    - scenario: "A cobertura de todos os 10 subtipos exigir reescrever o fluxo real e a amostra deixar de parecer JCLDB001"
+      likelihood: low
+      impact: high
+      mitigation: "Preservar a espinha dorsal do fluxo real e concentrar a didatica adicional em campos DEMO claramente rotulados como demonstrativos"
+  assumptions:
+    - "O objetivo e melhorar a amostra didatica servida pelo viewer, nao reescrever os artefatos reais de JCLDB001"
+    - "A UI ja possui filtros por transformacao e visualizacao de status de campos suficientes para explorar uma amostra mais rica sem alterar componentes React"
+    - "O bundle canonico em generated/mainframe-extractor/JCLDB001/importar continua sendo a referencia oficial e a copia em public/mainframe-sample deve permanecer identica nos CSVs principais"
+    - "A melhor forma de clareza pedagogica e separar campos demonstrativos dos campos reais de negocio em vez de sobrecarregar os alvos existentes"
+    - "Nao ha docs/PRD.yaml no repositorio; o pedido do usuario e a fonte de verdade para este escopo"
+
+implementation_specification:
+  code_structure: |
+    A nova amostra deve manter o fluxo estrutural `INPUT1 -> &&TMPIN001`,
+    `INPUT2 -> &&TMPIN002`, `DB2 -> &&TMPOUT03`, `&&TMPOUT03 ->
+    APP.ARQ.SAIDA.CBLDB001`, mas reorganizar a camada didatica em torno de uma
+    familia de campos com prefixo `DEMO-`. Em vez de usar poucos
+    campos reais para mostrar muitos conceitos, cada subtipo padronizado deve
+    ter pelo menos um alvo demonstrativo proprio, com nome que indique sua
+    funcao pedagogica. A convencao deve priorizar nomes curtos e simples,
+    evitando descricoes longas no proprio nome do campo. A referencia final de
+    execucao passa a ser a familia `DEMO-ID`, `DEMO-ORD`, `DEMO-ENR`,
+    `DEMO-LKP`, `DEMO-KEY`, `DEMO-CALC`, `DEMO-DER`, `DEMO-COND`,
+    `DEMO-FIXO`, `DEMO-RAW`, `DEMO-NULL1`, `DEMO-NULL2` e `DEMO-FILL`,
+    consolidada no arquivo
+    `docs/plan/mainframe-sample-jcldb001-taxonomia-completa/didactic-matrix.csv`.
+    Em paralelo,
+    deve existir uma trilha dedicada aos casos
+    de null/unfilled, com pelo menos tres comportamentos distintos: campo que
+    aparece no schema sem upstream real, campo que continua vazio ao ser
+    propagado adiante, e campo que so fica resolvido na etapa em que recebe uma
+    regra final ou uma origem real adicional. No contrato de T1, esses tres
+    comportamentos devem ser registrados na coluna `null_status`, enquanto a
+    coluna `rule_subtype` continua reservada apenas aos 10 subtipos
+    padronizados que o viewer entende. A espinha dorsal dos campos reais
+    do job deve permanecer reconhecivel, mas a narrativa principal da demo deve
+    se apoiar nesses campos dedicados para que o filtro por transformacao e a
+    leitura de cards fiquem imediatos.
+  affected_areas:
+    - generated/mainframe-extractor/JCLDB001/importar/entity_columns.csv
+    - generated/mainframe-extractor/JCLDB001/importar/column_mappings.csv
+    - generated/mainframe-extractor/JCLDB001/importar/transform_rules.csv
+    - mainframe-lineage-viewer/public/mainframe-sample/entity_columns.csv
+    - mainframe-lineage-viewer/public/mainframe-sample/column_mappings.csv
+    - mainframe-lineage-viewer/public/mainframe-sample/transform_rules.csv
+    - mainframe-lineage-viewer/__tests__
+    - docs/mainframe-lineage-viewer-v1.md
+    - docs/JCLDB001-documentacao.md
+  component_details:
+    - component: Matriz didatica da amostra JCLDB001
+      responsibility: "Definir o inventario final de campos DEMO, a quem cada um pertence e qual subtipo ou status narrativo de null cada campo precisa representar"
+      interfaces:
+        - "Tabela funcional de mapeamento subtipo -> campo demonstrativo -> etapa do fluxo"
+        - "Convencao de nomes curtos que deixe claro quando um campo existe so para demonstracao"
+        - "Contrato persistente em docs/plan/mainframe-sample-jcldb001-taxonomia-completa/didactic-matrix.csv com `rule_subtype` restrito a taxonomia e `null_status` para a trilha null"
+    - component: Bundle canonico JCLDB001
+      responsibility: "Materializar a matriz didatica nos CSVs canonicos, adicionando schemas, mappings e transform_rules necessarios"
+      interfaces:
+        - "entity_columns.csv com os novos campos DEMO nas entidades certas"
+        - "column_mappings.csv com grupos de lineage separados por exemplo"
+        - "transform_rules.csv com um rule_subtype explicito para cada categoria didatica"
+    - component: Amostra publica do viewer
+      responsibility: "Servir exatamente os mesmos CSVs principais do bundle canonico para o botao Carregar amostra JCLDB001"
+      interfaces:
+        - "public/mainframe-sample como espelho fiel dos CSVs principais"
+    - component: Regressao automatizada da amostra
+      responsibility: "Comprovar que todos os subtipos existem na amostra e que os cenarios null/unfilled produzem os estados esperados"
+      interfaces:
+        - "Teste de sincronizacao entre generated e public"
+        - "Teste de cobertura dos 10 subtipos padronizados"
+        - "Teste de status resolved/unfilled nos campos DEMO de null"
+    - component: Documentacao e roteiro de apresentacao
+      responsibility: "Explicar quais campos sao demonstrativos, como navegar pela taxonomia e como contar a historia dos cenarios null/unfilled sem confundir com o fluxo real"
+      interfaces:
+        - "Secao atualizada no viewer doc"
+        - "Nota atualizada na documentacao de JCLDB001 sobre o recorte didatico"
+  dependencies:
+    - component: parseCanonicalBundle
+      relationship: "Consumira os CSVs remodelados e precisa continuar produzindo edges, regras e origens sinteticas HARD_CODE sem ajustes estruturais"
+    - component: computeColumnFieldLineageStatus
+      relationship: "Precisara refletir corretamente os campos DEMO nulos, propagados e resolvidos a partir do lineage real que a amostra fornecer"
+    - component: MainframeBundlePicker
+      relationship: "Continua lendo diretamente public/mainframe-sample quando o usuario clica no botao da amostra"
+    - component: Transformation filter do Column-Level
+      relationship: "E o principal consumidor da nova clareza didatica; cada subtipo precisa ser facilmente isolavel pelo filtro existente"
+  integration_points:
+    - "generated/mainframe-extractor/JCLDB001/importar permanece como bundle canonico do sample"
+    - "mainframe-lineage-viewer/public/mainframe-sample e a origem efetiva usada pela UI"
+    - "mainframe-lineage-viewer/__tests__/mainframeSampleSync.test.ts precisa continuar cobrindo identidade entre generated e public"
+    - "mainframe-lineage-viewer/__tests__/columnFieldLineage.test.ts e o ponto natural para comprovar estados unfilled e resolved da nova trilha de null"
+    - "docs/mainframe-lineage-viewer-v1.md deve descrever a taxonomia e ensinar a leitura da nova amostra"
+
+contracts:
+  - from_task: T1
+    to_task: T2
+    interface: "Matriz didatica final com nomenclatura dos campos DEMO, trilhas por entidade, cobertura dos 10 subtipos e `null_status` dedicado aos 3 cenarios null"
+    format: "CSV contratual em docs/plan/mainframe-sample-jcldb001-taxonomia-completa/didactic-matrix.csv"
+  - from_task: T1
+    to_task: T5
+    interface: "Narrativa oficial da demonstracao e glossario dos campos didaticos"
+    format: "Roteiro funcional e documental"
+  - from_task: T2
+    to_task: T3
+    interface: "Bundle canonico remodelado com novos schemas, mappings e regras"
+    format: "CSV principal em generated/mainframe-extractor/JCLDB001/importar"
+  - from_task: T3
+    to_task: T4
+    interface: "Amostra publica atualizada, identica ao bundle canonico"
+    format: "CSV principal em public/mainframe-sample"
+  - from_task: T3
+    to_task: T6
+    interface: "Bundle efetivamente carregado pelo navegador contendo todos os exemplos didaticos"
+    format: "Assets estaticos da UI"
+  - from_task: T4
+    to_task: T6
+    interface: "Prova automatizada de cobertura da taxonomia e dos status dos campos null"
+    format: "Suite Jest verde"
+  - from_task: T5
+    to_task: T6
+    interface: "Roteiro esperado de demonstracao para confrontar com o comportamento observado na UI"
+    format: "Documentacao atualizada"
+
+tasks:
+  - id: T1
+    title: "Definir a matriz didatica da nova amostra"
+    description: |
+      Projetar a nova arquitetura pedagogica da amostra JCLDB001 antes de tocar
+      nos CSVs. Esta tarefa deve consolidar uma matriz simples e explicita com
+      o nome de cada campo DEMO, a entidade em que ele nasce, a entidade em que
+      ele termina e qual conceito ele demonstra. O desenho deve reservar ao
+      menos uma trilha dedicada aos 10 subtipos padronizados e outra trilha aos
+      cenarios null/unfilled, evitando misturar varios conceitos no mesmo alvo.
+      Para impedir ambiguidade no contrato, a trilha null deve registrar seus
+      tres cenarios em uma coluna dedicada de status narrativo e nao em
+      `rule_subtype`.
+      A nomenclatura final deve ser curta o suficiente para ficar legivel nos
+      cards e filtros sem truncar a leitura, privilegiando siglas simples em
+      vez de nomes descritivos longos.
+      O resultado precisa permitir que a UI seja apresentada de forma linear:
+      filtrar um subtipo, enxergar um exemplo claro; filtrar os campos nulos,
+      enxergar campo laranja propagado e depois resolvido.
+    wave: 1
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: generated/mainframe-extractor/JCLDB001/importar/entity_columns.csv
+        description: "Schema atual que mostra onde os campos demonstrativos podem ser inseridos"
+      - path: generated/mainframe-extractor/JCLDB001/importar/column_mappings.csv
+        description: "Edges atuais que hoje concentram varios conceitos em poucos campos"
+      - path: docs/mainframe-lineage-viewer-v1.md
+        description: "Taxonomia oficial e narrativa da amostra existente"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 180
+    focus_area: didactic-sample-design
+    verification:
+      - "Existe uma lista fechada de campos DEMO cobrindo todos os 10 subtipos"
+      - "Existe uma trilha especifica para null sem upstream, null propagado e null resolvido registrada em `null_status`"
+      - "A convencao de nomes diferencia campos reais de campos didaticos"
+      - "A coluna `rule_subtype` continua restrita aos 10 subtipos padronizados do viewer"
+      - "Os nomes finais sao curtos e cabem com folga na leitura dos cards"
+    acceptance_criteria:
+      - "Nenhum subtipo padronizado fica sem exemplo explicito"
+      - "Os exemplos podem ser explicados sem depender de interpretar campos reais ambiguos"
+      - "A nova narrativa permanece reconhecivel como fluxo JCLDB001"
+      - "Os campos demonstrativos usam nomes simples, curtos e consistentes"
+    failure_modes:
+      - scenario: "Dois ou mais subtipos ficarem representados pelo mesmo campo final e a leitura voltar a ser confusa"
+        likelihood: medium
+        impact: high
+        mitigation: "Distribuir exemplos em campos dedicados, mesmo que alguns sejam compactos e demonstrativos"
+    tech_stack:
+      - CSV canonico
+      - Taxonomia padronizada do viewer
+      - Semantica de status de campo
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Cobertura fechada da familia DEMO"
+        steps:
+          - "Ler docs/plan/mainframe-sample-jcldb001-taxonomia-completa/didactic-matrix.csv"
+          - "Conferir que existem 10 linhas track=taxonomy e 3 linhas track=null"
+          - "Conferir que apenas linhas track=taxonomy preenchem `rule_subtype`"
+          - "Conferir que linhas track=null usam `null_status` com sem_upstream, propagado e resolvido"
+          - "Conferir que todos os field_name comecam com DEMO- e sao unicos"
+        expected_result: "A matriz cobre toda a taxonomia e a trilha null sem ambiguidades"
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T2
+    title: "Remodelar o bundle canonico com campos DEMO"
+    description: |
+      Aplicar a matriz didatica nos CSVs canonicos de JCLDB001. O bundle deve
+      ganhar os novos campos DEMO nos schemas certos e as respectivas entradas
+      em column_mappings e transform_rules para que cada subtipo apareca de
+      forma isolavel. Esta tarefa tambem deve redesenhar o antigo
+      OUT-DEMO-FALLBACK em uma trilha mais completa de null/unfilled, cobrindo
+      pelo menos: campo que existe sem upstream real em &&TMPOUT03, campo que
+      continua vazio quando copiado para a etapa seguinte e campo que so fica
+      resolvido quando uma regra final ou um upstream real adicional entra no
+      lineage. A implementacao deve seguir a convencao de nomes curtos definida
+      em T1 e evitar novos campos com rotulos extensos demais.
+    wave: 2
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: docs/plan/mainframe-sample-jcldb001-taxonomia-completa/didactic-matrix.csv
+        description: "Contrato final da familia DEMO, com campos, trilhas e conceitos que precisam virar CSV canonico"
+      - path: generated/mainframe-extractor/JCLDB001/importar/entity_columns.csv
+        description: "Arquivo principal de schema a ser expandido com campos DEMO"
+      - path: generated/mainframe-extractor/JCLDB001/importar/column_mappings.csv
+        description: "Arquivo de lineage de colunas que precisa materializar cada exemplo"
+      - path: generated/mainframe-extractor/JCLDB001/importar/transform_rules.csv
+        description: "Arquivo de regras que precisa cobrir os 10 rule_subtype padronizados"
+    estimated_effort: large
+    estimated_files: 3
+    estimated_lines: 260
+    focus_area: canonical-demo-bundle
+    verification:
+      - "transform_rules.csv contem todos os 10 subtipos padronizados"
+      - "Os campos DEMO de null exibem etapas distintas de unfilled e resolved"
+      - "Os campos reais principais do sample continuam preservados"
+    acceptance_criteria:
+      - "O bundle canonico sozinho ja permite demonstrar toda a taxonomia"
+      - "Os exemplos null/unfilled nao dependem de interpretar bugs ou comportamentos acidentais"
+      - "Os nomes dos campos e descricoes das regras sao legiveis em tela"
+      - "Os nomes dos campos DEMO permanecem simples e previsiveis para busca e apresentacao"
+    failure_modes:
+      - scenario: "A remodelagem adicionar campos, mas deixar descricoes vagas ou repetitivas demais para apresentacao"
+        likelihood: medium
+        impact: medium
+        mitigation: "Padronizar nomes e descricoes curtas que digam claramente o que esta sendo demonstrado"
+    tech_stack:
+      - CSV canonico
+      - Taxonomia de transformacoes mainframe
+      - Parser com origem sintetica HARD_CODE
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T3
+    title: "Espelhar a nova amostra em public/mainframe-sample"
+    description: |
+      Copiar os CSVs principais remodelados para a pasta publica usada pela UI,
+      mantendo identidade byte a byte nos arquivos que hoje fazem parte do
+      contrato de sincronizacao. O objetivo e garantir que a experiencia real do
+      botao Carregar amostra JCLDB001 corresponda exatamente ao bundle canonico
+      planejado.
+    wave: 3
+    agent: gem-implementer
+    priority: high
+    status: completed
+    dependencies:
+      - T2
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/public/mainframe-sample/entity_columns.csv
+        description: "Schema efetivamente consumido pelo navegador"
+      - path: mainframe-lineage-viewer/public/mainframe-sample/column_mappings.csv
+        description: "Mappings efetivamente usados pela tela de lineage"
+      - path: mainframe-lineage-viewer/public/mainframe-sample/transform_rules.csv
+        description: "Regras efetivamente exibidas nos filtros e nos cards do viewer"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 260
+    focus_area: public-demo-sample
+    verification:
+      - "Os CSVs publicos refletem integralmente o novo bundle canonico"
+      - "A UI nao precisa de nenhuma mudanca de codigo para consumir a nova amostra"
+      - "O contrato public versus generated permanece intacto"
+    acceptance_criteria:
+      - "Carregar amostra JCLDB001 passa a expor a taxonomia completa"
+      - "A copia publica nao perde nenhum exemplo por divergencia manual"
+      - "Os arquivos principais permanecem sincronizaveis por teste"
+    failure_modes:
+      - scenario: "Algum CSV publico ficar desatualizado e o usuario continuar vendo a amostra antiga ou parcialmente nova"
+        likelihood: medium
+        impact: high
+        mitigation: "Tratar o espelhamento como etapa dedicada e verificar byte a byte nos testes"
+    tech_stack:
+      - Next.js public static assets
+      - CSV canonico
+      - Parser existente do viewer
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Carga da nova amostra completa"
+        steps:
+          - "Abrir /mainframe"
+          - "Acionar Carregar amostra JCLDB001"
+          - "Confirmar que a amostra publica contem os campos DEMO e os novos subtipos"
+        expected_result: "A UI passa a consumir a nova amostra sem ajustes adicionais de codigo"
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T4
+    title: "Adicionar regressao de cobertura da taxonomia e dos nulos"
+    description: |
+      Expandir a regressao automatizada para validar tres coisas: a identidade
+      entre bundle canonico e amostra publica, a presenca dos 10 subtipos
+      padronizados na amostra e os estados esperados dos campos DEMO de null.
+      O conjunto de testes deve impedir regressao silenciosa tanto da narrativa
+      didatica quanto do comportamento visual resolved/unfilled.
+    wave: 4
+    agent: gem-implementer
+    priority: medium
+    status: completed
+    dependencies:
+      - T3
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/__tests__/mainframeSampleSync.test.ts
+        description: "Base atual do contrato de sincronizacao public versus generated"
+      - path: mainframe-lineage-viewer/__tests__/columnFieldLineage.test.ts
+        description: "Base natural para validar estados unfilled e resolved"
+      - path: mainframe-lineage-viewer/public/mainframe-sample/transform_rules.csv
+        description: "Fonte das expectativas sobre cobertura da taxonomia"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 220
+    focus_area: sample-regression-tests
+    verification:
+      - "Ha um teste que garante cobertura dos 10 rule_subtype padronizados"
+      - "Ha um teste que garante a trilha null -> null propagado -> resolved"
+      - "O teste de sync continua protegendo generated versus public"
+    acceptance_criteria:
+      - "Uma futura remocao acidental de subtipo quebra teste"
+      - "Uma futura quebra da semantica dos campos nulos quebra teste"
+      - "As expectativas permanecem alinhadas com a amostra publica servida pela UI"
+    failure_modes:
+      - scenario: "Os testes cobrirem apenas contagem de subtipos e nao os campos certos, permitindo degradacao da clareza didatica"
+        likelihood: medium
+        impact: medium
+        mitigation: "Validar tambem nomes de campos DEMO e pelo menos um caminho representativo por subtipo critico"
+    tech_stack:
+      - Jest 29.7.0
+      - parseCanonicalBundle
+      - computeColumnFieldLineageStatus
+    test_coverage: targeted
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []
+
+  - id: T5
+    title: "Atualizar a documentacao e o roteiro didatico"
+    description: |
+      Revisar a documentacao do viewer e a documentacao de JCLDB001 para deixar
+      claro que existe uma camada didatica controlada na amostra publica. A nova
+      documentacao deve listar a familia de campos DEMO, mapear cada subtipo ao
+      seu exemplo correspondente e explicar como contar a historia dos cenarios
+      null/unfilled sem misturar esse roteiro com a extracao literal do fluxo
+      real do job. A documentacao tambem deve registrar a convencao de nomes
+      simples para que futuras evolucoes nao voltem a inflar os campos DEMO.
+    wave: 2
+    agent: gem-documentation-writer
+    priority: medium
+    status: completed
+    dependencies:
+      - T1
+    conflicts_with: []
+    context_files:
+      - path: docs/mainframe-lineage-viewer-v1.md
+        description: "Documento principal de apresentacao do viewer e da amostra JCLDB001"
+      - path: docs/JCLDB001-documentacao.md
+        description: "Documento de negocio que ja separa fluxo real e recorte didatico"
+    estimated_effort: medium
+    estimated_files: 2
+    estimated_lines: 180
+    focus_area: sample-documentation
+    verification:
+      - "A documentacao enumera a familia de exemplos da taxonomia"
+      - "A documentacao explica a trilha dos campos null/unfilled"
+      - "Fica explicito o que e fluxo real versus o que e demonstracao controlada"
+    acceptance_criteria:
+      - "Uma pessoa consegue apresentar a amostra sem improvisar a narrativa"
+      - "A taxonomia e os exemplos ficam associados de forma um para um sempre que possivel"
+      - "Nao fica ambiguidade entre amostra didatica e leitura literal do COBOL/JCL"
+    failure_modes:
+      - scenario: "A documentacao listar subtipos, mas nao dizer quais campos usar na demonstracao"
+        likelihood: medium
+        impact: medium
+        mitigation: "Adicionar uma tabela direta subtipo -> campo DEMO -> mensagem de apresentacao"
+    tech_stack:
+      - Markdown
+      - Documentacao funcional do viewer
+    test_coverage: null
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix: []
+    environment: null
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: update
+    audience: developers
+    coverage_matrix:
+      - "Taxonomia completa de transformacoes"
+      - "Campos DEMO da nova amostra"
+      - "Cenarios null/unfilled e sua leitura visual"
+      - "Separacao entre fluxo real e camada didatica"
+
+  - id: T6
+    title: "Validar no navegador a clareza da nova amostra"
+    description: |
+      Executar validacao browser-based com a amostra remodelada para comprovar
+      que o objetivo pedagogico foi atingido em tela, nao apenas no CSV. A
+      validacao deve percorrer o filtro de transformacao, checar se cada subtipo
+      encontra pelo menos um exemplo claramente identificavel e revisar a trilha
+      dos campos null/unfilled para garantir que o usuario veja o campo laranja
+      onde ele deveria continuar sem upstream e o campo azul apenas quando a
+      regra final ou a origem real entra em cena.
+    wave: 5
+    agent: gem-browser-tester
+    priority: medium
+    status: completed
+    dependencies:
+      - T3
+      - T4
+      - T5
+    conflicts_with: []
+    context_files:
+      - path: mainframe-lineage-viewer/public/mainframe-sample/transform_rules.csv
+        description: "Lista final dos subtipos e campos demonstrativos a conferir na UI"
+      - path: mainframe-lineage-viewer/src/components/ColumnLineage.tsx
+        description: "View onde filtros e estados de campo ficam mais visiveis"
+      - path: docs/mainframe-lineage-viewer-v1.md
+        description: "Roteiro esperado para comparar com a experiencia real"
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 120
+    focus_area: browser-validation
+    verification:
+      - "Cada subtipo filtrado retorna um exemplo legivel e identificavel"
+      - "O caso null propagado permanece visualmente unfilled antes da resolucao"
+      - "O caso resolvido muda para resolved apenas na etapa prevista"
+    acceptance_criteria:
+      - "A amostra pode ser apresentada como taxonomia completa sem ambiguidades visuais"
+      - "Os filtros existentes bastam para encontrar cada exemplo rapidamente"
+      - "Os cenarios null/unfilled sao compreensiveis sem precisar explicar comportamento interno do parser"
+    failure_modes:
+      - scenario: "Os exemplos existirem no CSV, mas a densidade visual da tela continuar escondendo o objetivo didatico"
+        likelihood: medium
+        impact: high
+        mitigation: "Ajustar a escolha e a distribuicao dos campos DEMO para reduzir ruido e validar com filtro e field search na interface real"
+    tech_stack:
+      - Next.js 15.1.0
+      - ReactFlow
+      - Browser automation
+    test_coverage: manual-plus-browser
+    requires_review: false
+    review_depth: null
+    review_security_sensitive: false
+    validation_matrix:
+      - scenario: "Filtro por subtipo padronizado"
+        steps:
+          - "Abrir /mainframe"
+          - "Carregar a amostra JCLDB001"
+          - "No Column-Level, selecionar cada transformacao padronizada no filtro"
+          - "Observar se ao menos um campo DEMO representativo aparece de forma imediata"
+        expected_result: "Todos os 10 subtipos possuem pelo menos um exemplo claro e recuperavel pelo filtro"
+      - scenario: "Trilha de null propagado"
+        steps:
+          - "Filtrar o conjunto de campos DEMO de null"
+          - "Selecionar o campo que nasce sem upstream em &&TMPOUT03"
+          - "Verificar sua propagacao para a etapa seguinte antes da resolucao"
+        expected_result: "O campo permanece unfilled nas etapas previstas ate o ponto de resolucao"
+      - scenario: "Resolucao tardia do campo nulo"
+        steps:
+          - "Selecionar o campo DEMO que so recebe regra final ou origem adicional na saida final"
+          - "Comparar o status da etapa intermediaria com o da etapa final"
+        expected_result: "A etapa intermediaria permanece laranja e a etapa final fica azul apenas quando o upstream real ou sintetico valido aparece"
+    environment: development
+    requires_approval: false
+    devops_security_sensitive: false
+    task_type: null
+    audience: null
+    coverage_matrix: []

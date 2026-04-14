@@ -6,11 +6,15 @@ import { jsPDF } from 'jspdf';
 import { ParsedFieldRule, ParsedLineage } from '@/lib/types';
 import { useThemeContext } from '@/components/ThemeProvider';
 import MainframeBundlePicker from '@/components/MainframeBundlePicker';
+import MainframeExportActions from '@/components/MainframeExportActions';
 import TableLineage from '@/components/TableLineage';
 import ColumnLineage from '@/components/ColumnLineage';
 import { formatRawTransformation } from '@/lib/mainframe/transformationCatalog';
 import { loadBundles, saveBundles, clearBundles, StoredBundle } from '@/lib/mainframe/bundleStorage';
-import { exportLineageExcel } from '@/lib/mainframe/exportLineageExcel';
+import {
+  exportDetailedLineageWorkbook,
+  exportExecutiveClassificationWorkbook,
+} from '@/lib/mainframe/exportWorkbookActions';
 
 interface LoadedBundle {
   id: string;
@@ -658,25 +662,12 @@ function MainframeRulePanel({
                 ? `${selectedFields.length} campo${selectedFields.length > 1 ? 's' : ''} selecionado${selectedFields.length > 1 ? 's' : ''}`
                 : 'Nenhum campo selecionado'}
             </div>
-            {selectedFields.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => exportLineageExcel(data, selectedFields)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  border: `1px solid ${isDark ? '#484644' : '#C8C6C4'}`,
-                  backgroundColor: '#0078D4',
-                  color: '#FFFFFF',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Exportar Excel
-              </button>
-            ) : null}
+            <MainframeExportActions
+              isDark={isDark}
+              selectedFieldsCount={selectedFields.length}
+              onDetailedExport={() => exportDetailedLineageWorkbook(data, selectedFields)}
+              onClassificationExport={() => exportExecutiveClassificationWorkbook(data, selectedFields)}
+            />
           </div>
         </div>
 

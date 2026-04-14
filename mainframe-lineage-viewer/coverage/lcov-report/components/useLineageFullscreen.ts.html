@@ -434,187 +434,187 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 &nbsp;
 type FullscreenDocument = Document &amp; {
-  fullscreenEnabled?: boolean;
-  fullscreenElement?: Element | null;
-  exitFullscreen?: () =&gt; Promise&lt;void&gt;;
+    fullscreenEnabled?: boolean;
+    fullscreenElement?: Element | null;
+    exitFullscreen?: () =&gt; Promise&lt;void&gt;;
 };
 &nbsp;
 type FullscreenContainerElement = HTMLElement &amp; {
-  requestFullscreen?: () =&gt; Promise&lt;void&gt;;
+    requestFullscreen?: () =&gt; Promise&lt;void&gt;;
 };
 &nbsp;
 export interface UseLineageFullscreenOptions {
-  containerRef: RefObject&lt;HTMLElement | null&gt;;
-  onFullscreenChange?: (isFullscreen: boolean) =&gt; void;
-  refitDelayMs?: number;
+    containerRef: RefObject&lt;HTMLElement | null&gt;;
+    onFullscreenChange?: (isFullscreen: boolean) =&gt; void;
+    refitDelayMs?: number;
 }
 &nbsp;
 export interface LineageFullscreenController {
-  isFullscreen: boolean;
-  isFullscreenSupported: boolean;
-  enterFullscreen: () =&gt; Promise&lt;boolean&gt;;
-  exitFullscreen: () =&gt; Promise&lt;boolean&gt;;
-  toggleFullscreen: () =&gt; Promise&lt;boolean&gt;;
+    isFullscreen: boolean;
+    isFullscreenSupported: boolean;
+    enterFullscreen: () =&gt; Promise&lt;boolean&gt;;
+    exitFullscreen: () =&gt; Promise&lt;boolean&gt;;
+    toggleFullscreen: () =&gt; Promise&lt;boolean&gt;;
 }
 &nbsp;
 export const DEFAULT_LINEAGE_FULLSCREEN_REFIT_DELAY_MS = 80;
 &nbsp;
 function <span class="fstat-no" title="function not covered" >getBrowserFullscreenDocument(</span>): FullscreenDocument | null {
-<span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="if path not taken" >I</span>if (typeof document === 'undefined') {</span>
-<span class="cstat-no" title="statement not covered" >    return null;</span>
-  }
+<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (typeof document === 'undefined') {</span>
+<span class="cstat-no" title="statement not covered" >        return null;</span>
+    }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return document as FullscreenDocument;</span>
+<span class="cstat-no" title="statement not covered" >    return document as FullscreenDocument;</span>
 }
 &nbsp;
 export function canUseLineageFullscreen(
-  fullscreenDocument: FullscreenDocument | null,
-  containerElement: HTMLElement | null,
+    fullscreenDocument: FullscreenDocument | null,
+    containerElement: HTMLElement | null,
 ): boolean {
-  const candidateElement = containerElement as FullscreenContainerElement | null;
+    const candidateElement = containerElement as FullscreenContainerElement | null;
 &nbsp;
-  return Boolean(
-    fullscreenDocument?.fullscreenEnabled &amp;&amp;
-      candidateElement<span class="branch-0 cbranch-no" title="branch not covered" >?.r</span>equestFullscreen,
-  );
+    return Boolean(
+        fullscreenDocument?.fullscreenEnabled &amp;&amp;
+        candidateElement<span class="branch-0 cbranch-no" title="branch not covered" >?.r</span>equestFullscreen,
+    );
 }
 &nbsp;
 export function isLineageFullscreenActive(
-  fullscreenDocument: FullscreenDocument | null,
-  containerElement: HTMLElement | null,
+    fullscreenDocument: FullscreenDocument | null,
+    containerElement: HTMLElement | null,
 ): boolean {
-  return Boolean(
-    fullscreenDocument<span class="branch-0 cbranch-no" title="branch not covered" >?.f</span>ullscreenElement &amp;&amp;
-      containerElement &amp;&amp;
-      fullscreenDocument.fullscreenElement === containerElement,
-  );
+    return Boolean(
+        fullscreenDocument<span class="branch-0 cbranch-no" title="branch not covered" >?.f</span>ullscreenElement &amp;&amp;
+        containerElement &amp;&amp;
+        fullscreenDocument.fullscreenElement === containerElement,
+    );
 }
 &nbsp;
 export function scheduleLineageFullscreenRefit(
-  onFullscreenChange: ((isFullscreen: boolean) =&gt; void) | undefined,
-  isFullscreen: boolean,
-  delayMs = <span class="branch-0 cbranch-no" title="branch not covered" >DEFAULT_LINEAGE_FULLSCREEN_REFIT_DELAY_MS,</span>
+    onFullscreenChange: ((isFullscreen: boolean) =&gt; void) | undefined,
+    isFullscreen: boolean,
+    delayMs = <span class="branch-0 cbranch-no" title="branch not covered" >DEFAULT_LINEAGE_FULLSCREEN_REFIT_DELAY_MS,</span>
 ): () =&gt; void {
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (!onFullscreenChange) {
-<span class="cstat-no" title="statement not covered" >    return <span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >undefined;</span></span>
-  }
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!onFullscreenChange) {
+<span class="cstat-no" title="statement not covered" >        return <span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >undefined;</span></span>
+    }
 &nbsp;
-  const timeoutId = setTimeout(() =&gt; {
-    onFullscreenChange(isFullscreen);
-  }, delayMs);
+    const timeoutId = setTimeout(() =&gt; {
+        onFullscreenChange(isFullscreen);
+    }, delayMs);
 &nbsp;
-  return () =&gt; clearTimeout(timeoutId);
+    return () =&gt; clearTimeout(timeoutId);
 }
 &nbsp;
 export function <span class="fstat-no" title="function not covered" >useLineageFullscreen(</span>{
-  containerRef,
-  onFullscreenChange,
-  refitDelayMs = <span class="branch-0 cbranch-no" title="branch not covered" >DEFAULT_LINEAGE_FULLSCREEN_REFIT_DELAY_MS,</span>
+    containerRef,
+    onFullscreenChange,
+    refitDelayMs = <span class="branch-0 cbranch-no" title="branch not covered" >DEFAULT_LINEAGE_FULLSCREEN_REFIT_DELAY_MS,</span>
 }: UseLineageFullscreenOptions): LineageFullscreenController {
-  const [isFullscreen, setIsFullscreen] = <span class="cstat-no" title="statement not covered" >useState(false);</span>
-  const [isFullscreenSupported, setIsFullscreenSupported] = <span class="cstat-no" title="statement not covered" >useState(false);</span>
-  const clearPendingRefitRef = <span class="cstat-no" title="statement not covered" >useRef&lt;(() =&gt; void) | null&gt;(null);</span>
+    const [isFullscreen, setIsFullscreen] = <span class="cstat-no" title="statement not covered" >useState(false);</span>
+    const [isFullscreenSupported, setIsFullscreenSupported] = <span class="cstat-no" title="statement not covered" >useState(false);</span>
+    const clearPendingRefitRef = <span class="cstat-no" title="statement not covered" >useRef&lt;(() =&gt; void) | null&gt;(null);</span>
 &nbsp;
-  const syncFullscreenState = <span class="cstat-no" title="statement not covered" >useCallback(</span>
-<span class="fstat-no" title="function not covered" >    (s</span>houldNotifyViewport: boolean) =&gt; {
-      const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
-      const containerElement = <span class="cstat-no" title="statement not covered" >containerRef.current;</span>
-      const nextIsFullscreenSupported = <span class="cstat-no" title="statement not covered" >canUseLineageFullscreen(fullscreenDocument, containerElement);</span>
-      const nextIsFullscreen = <span class="cstat-no" title="statement not covered" >isLineageFullscreenActive(fullscreenDocument, containerElement);</span>
+    const syncFullscreenState = <span class="cstat-no" title="statement not covered" >useCallback(</span>
+<span class="fstat-no" title="function not covered" >        (s</span>houldNotifyViewport: boolean) =&gt; {
+            const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
+            const containerElement = <span class="cstat-no" title="statement not covered" >containerRef.current;</span>
+            const nextIsFullscreenSupported = <span class="cstat-no" title="statement not covered" >canUseLineageFullscreen(fullscreenDocument, containerElement);</span>
+            const nextIsFullscreen = <span class="cstat-no" title="statement not covered" >isLineageFullscreenActive(fullscreenDocument, containerElement);</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >      setIsFullscreenSupported(nextIsFullscreenSupported);</span>
-<span class="cstat-no" title="statement not covered" >      setIsFullscreen(nextIsFullscreen);</span>
+<span class="cstat-no" title="statement not covered" >            setIsFullscreenSupported(nextIsFullscreenSupported);</span>
+<span class="cstat-no" title="statement not covered" >            setIsFullscreen(nextIsFullscreen);</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (shouldNotifyViewport) {</span>
-<span class="cstat-no" title="statement not covered" >        clearPendingRefitRef.current?.();</span>
-<span class="cstat-no" title="statement not covered" >        clearPendingRefitRef.current = scheduleLineageFullscreenRefit(</span>
-          onFullscreenChange,
-          nextIsFullscreen,
-          refitDelayMs,
-        );
-      }
-    },
-    [containerRef, onFullscreenChange, refitDelayMs],
-  );
+<span class="cstat-no" title="statement not covered" >            <span class="missing-if-branch" title="if path not taken" >I</span>if (shouldNotifyViewport) {</span>
+<span class="cstat-no" title="statement not covered" >                clearPendingRefitRef.current?.();</span>
+<span class="cstat-no" title="statement not covered" >                clearPendingRefitRef.current = scheduleLineageFullscreenRefit(</span>
+                    onFullscreenChange,
+                    nextIsFullscreen,
+                    refitDelayMs,
+                );
+            }
+        },
+        [containerRef, onFullscreenChange, refitDelayMs],
+    );
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  useEffect(<span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
-    const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!fullscreenDocument) {</span>
-<span class="cstat-no" title="statement not covered" >      return;</span>
-    }
+<span class="cstat-no" title="statement not covered" >    useEffect(<span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
+        const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
+<span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (!fullscreenDocument) {</span>
+<span class="cstat-no" title="statement not covered" >            return;</span>
+        }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    syncFullscreenState(false);</span>
+<span class="cstat-no" title="statement not covered" >        syncFullscreenState(false);</span>
 &nbsp;
-    const handleFullscreenChange = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
-<span class="cstat-no" title="statement not covered" >      syncFullscreenState(true);</span>
+        const handleFullscreenChange = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
+<span class="cstat-no" title="statement not covered" >            syncFullscreenState(true);</span>
+        };
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        fullscreenDocument.addEventListener('fullscreenchange', handleFullscreenChange);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        return <span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
+<span class="cstat-no" title="statement not covered" >            fullscreenDocument.removeEventListener('fullscreenchange', handleFullscreenChange);</span>
+<span class="cstat-no" title="statement not covered" >            clearPendingRefitRef.current?.();</span>
+<span class="cstat-no" title="statement not covered" >            clearPendingRefitRef.current = null;</span>
+        };
+    }, [syncFullscreenState]);
+&nbsp;
+    const enterFullscreen = <span class="cstat-no" title="statement not covered" >useCallback(<span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
+        const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
+        const containerElement = <span class="cstat-no" title="statement not covered" >containerRef.current as FullscreenContainerElement | null;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (isLineageFullscreenActive(fullscreenDocument, containerElement)) {</span>
+<span class="cstat-no" title="statement not covered" >            return true;</span>
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (!canUseLineageFullscreen(fullscreenDocument, containerElement)) {</span>
+<span class="cstat-no" title="statement not covered" >            return false;</span>
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (!containerElement) {</span>
+<span class="cstat-no" title="statement not covered" >            return false;</span>
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        try {</span>
+<span class="cstat-no" title="statement not covered" >            await containerElement.requestFullscreen();</span>
+<span class="cstat-no" title="statement not covered" >            return true;</span>
+        } catch {
+<span class="cstat-no" title="statement not covered" >            return false;</span>
+        }
+    }, [containerRef]);
+&nbsp;
+    const exitFullscreen = <span class="cstat-no" title="statement not covered" >useCallback(<span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
+        const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (!fullscreenDocument?.fullscreenElement || !fullscreenDocument.exitFullscreen) {</span>
+<span class="cstat-no" title="statement not covered" >            return false;</span>
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        try {</span>
+<span class="cstat-no" title="statement not covered" >            await fullscreenDocument.exitFullscreen();</span>
+<span class="cstat-no" title="statement not covered" >            return true;</span>
+        } catch {
+<span class="cstat-no" title="statement not covered" >            return false;</span>
+        }
+    }, []);
+&nbsp;
+    const toggleFullscreen = <span class="cstat-no" title="statement not covered" >useCallback(<span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
+        const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
+        const containerElement = <span class="cstat-no" title="statement not covered" >containerRef.current;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (isLineageFullscreenActive(fullscreenDocument, containerElement)) {</span>
+<span class="cstat-no" title="statement not covered" >            return exitFullscreen();</span>
+        }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        return enterFullscreen();</span>
+    }, [containerRef, enterFullscreen, exitFullscreen]);
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    return {</span>
+        isFullscreen,
+        isFullscreenSupported,
+        enterFullscreen,
+        exitFullscreen,
+        toggleFullscreen,
     };
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    fullscreenDocument.addEventListener('fullscreenchange', handleFullscreenChange);</span>
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    return <span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
-<span class="cstat-no" title="statement not covered" >      fullscreenDocument.removeEventListener('fullscreenchange', handleFullscreenChange);</span>
-<span class="cstat-no" title="statement not covered" >      clearPendingRefitRef.current?.();</span>
-<span class="cstat-no" title="statement not covered" >      clearPendingRefitRef.current = null;</span>
-    };
-  }, [syncFullscreenState]);
-&nbsp;
-  const enterFullscreen = <span class="cstat-no" title="statement not covered" >useCallback(<span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
-    const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
-    const containerElement = <span class="cstat-no" title="statement not covered" >containerRef.current as FullscreenContainerElement | null;</span>
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (isLineageFullscreenActive(fullscreenDocument, containerElement)) {</span>
-<span class="cstat-no" title="statement not covered" >      return true;</span>
-    }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!canUseLineageFullscreen(fullscreenDocument, containerElement)) {</span>
-<span class="cstat-no" title="statement not covered" >      return false;</span>
-    }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!containerElement) {</span>
-<span class="cstat-no" title="statement not covered" >      return false;</span>
-    }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      await containerElement.requestFullscreen();</span>
-<span class="cstat-no" title="statement not covered" >      return true;</span>
-    } catch {
-<span class="cstat-no" title="statement not covered" >      return false;</span>
-    }
-  }, [containerRef]);
-&nbsp;
-  const exitFullscreen = <span class="cstat-no" title="statement not covered" >useCallback(<span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
-    const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!fullscreenDocument?.fullscreenElement || !fullscreenDocument.exitFullscreen) {</span>
-<span class="cstat-no" title="statement not covered" >      return false;</span>
-    }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      await fullscreenDocument.exitFullscreen();</span>
-<span class="cstat-no" title="statement not covered" >      return true;</span>
-    } catch {
-<span class="cstat-no" title="statement not covered" >      return false;</span>
-    }
-  }, []);
-&nbsp;
-  const toggleFullscreen = <span class="cstat-no" title="statement not covered" >useCallback(<span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
-    const fullscreenDocument = <span class="cstat-no" title="statement not covered" >getBrowserFullscreenDocument();</span>
-    const containerElement = <span class="cstat-no" title="statement not covered" >containerRef.current;</span>
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (isLineageFullscreenActive(fullscreenDocument, containerElement)) {</span>
-<span class="cstat-no" title="statement not covered" >      return exitFullscreen();</span>
-    }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >    return enterFullscreen();</span>
-  }, [containerRef, enterFullscreen, exitFullscreen]);
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  return {</span>
-    isFullscreen,
-    isFullscreenSupported,
-    enterFullscreen,
-    exitFullscreen,
-    toggleFullscreen,
-  };
 }</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -622,7 +622,7 @@ export function <span class="fstat-no" title="function not covered" >useLineageF
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-13T23:27:15.085Z
+                at 2026-04-14T00:27:38.787Z
             </div>
         <script src="../prettify.js"></script>
         <script>
