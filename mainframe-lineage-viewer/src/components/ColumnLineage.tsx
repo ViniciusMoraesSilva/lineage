@@ -1263,38 +1263,38 @@ const ColumnLineage = ({ data, onSelectionChange }: ColumnLineageProps) => {
             height: isFullscreen ? '100%' : '600px',
           }}
         >
-        <ReactFlow
-          nodes={renderNodes}
-          edges={renderEdges}
-          onNodesChange={onNodesChange}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.2}
-          maxZoom={2}
-          proOptions={{ hideAttribution: true }}
-          onPaneClick={handlePaneClick}
-          onInit={handleReactFlowInit}
-        >
-          <FullscreenButton
-            isDark={isDark}
-            isFullscreen={isFullscreen}
-            isFullscreenSupported={isFullscreenSupported}
-            onToggle={() => {
-              void toggleFullscreen();
-            }}
-          />
-          <ResetLayoutButton initialNodes={initialNodes} />
-          <Background color={isDark ? '#323130' : '#EDEBE9'} gap={20} size={1} />
-          <Controls
-            showInteractive={false}
-            style={{
-              backgroundColor: isDark ? '#252423' : '#FFFFFF',
-              border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
-              borderRadius: '4px',
-            }}
-          />
-        </ReactFlow>
+          <ReactFlow
+            nodes={renderNodes}
+            edges={renderEdges}
+            onNodesChange={onNodesChange}
+            nodeTypes={nodeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.2 }}
+            minZoom={0.2}
+            maxZoom={2}
+            proOptions={{ hideAttribution: true }}
+            onPaneClick={handlePaneClick}
+            onInit={handleReactFlowInit}
+          >
+            <FullscreenButton
+              isDark={isDark}
+              isFullscreen={isFullscreen}
+              isFullscreenSupported={isFullscreenSupported}
+              onToggle={() => {
+                void toggleFullscreen();
+              }}
+            />
+            <ResetLayoutButton initialNodes={initialNodes} />
+            <Background color={isDark ? '#323130' : '#EDEBE9'} gap={20} size={1} />
+            <Controls
+              showInteractive={false}
+              style={{
+                backgroundColor: isDark ? '#252423' : '#FFFFFF',
+                border: `1px solid ${isDark ? '#484644' : '#EDEBE9'}`,
+                borderRadius: '4px',
+              }}
+            />
+          </ReactFlow>
         </div>
       </div>
     </section>
