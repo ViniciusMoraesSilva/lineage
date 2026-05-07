@@ -1,3 +1,4 @@
+
 # Regras de Negócio — Migração Mainframe → AWS
 
 > Documento gerado pelo Business Rules Agent a partir do código-fonte COBOL/JCL.
